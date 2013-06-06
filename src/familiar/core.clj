@@ -3,7 +3,7 @@
    (:require [clj-time.core :as jtime]
              [clj-time.format :as jtimef]))
 
-(declare prn-read)
+(declare prn-read str->key)
 
 (defn -main
   "Gets to know you"
@@ -50,13 +50,12 @@
 
 (defn add-variable [variable range-form default unit]
   (assert ((eval range-form) default) "Default not in range!")
-  (swap! experiment #(assoc % (keyword variable)
+  (swap! experiment #(assoc % (str->key variable)
                               {:range-form range-form
                                :default default
                                :unit unit
                                :instances {}})))
 
-; works? idk
 (defn add-variable-guided []
   (let [variable   (prn-read "Enter variable name")
         range-form (prn-read "Enter range form")
@@ -65,11 +64,11 @@
     (add-variable (str variable) range-form default (str unit))))
 
 (defn add-datum [variable value]
-  (assert ((eval (-> @experiment ((keyword variable)) :range-form)) value)
+  (assert ((eval (-> @experiment ((str->key variable)) :range-form)) value)
           "Value not in range!")
   (swap! experiment (fn [v]
                      (update-in v 
-                                [(keyword variable) :instances] 
+                                [(str->key variable) :instances] 
                                 #(assoc % @active-time value)))))
 
 (defn add-data [& coll]
@@ -79,10 +78,10 @@
   (loop [coll []]
     (let [variable (prn-read "Enter variable name or nil to quit")
           value    (if variable
-                      (prn-read "Enter value")
+                      (prn-read "Enter value or nil to quit")
                        nil)]
-      (if variable
-        (recur (conj coll (keyword variable) value))
+      (if (some #(= nil %) [variable value])
+        (recur (conj coll (str->key variable) value))
         (apply add-data coll)))))
 
 (defn save-experiment []
@@ -120,3 +119,10 @@
 
 (defn prn-read [p] (do (println p)
                        (read)))
+
+(defn str->key [s] (->> s
+                       str
+                       (replace {\space \-})
+                       (apply str)
+                       .toLowerCase
+                       keyword))
