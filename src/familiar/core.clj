@@ -1,7 +1,12 @@
 (ns familiar.core
   ;(:gen-class)
    (:require [clj-time.core :as jtime]
-             [clj-time.format :as jtimef]))
+             [clj-time.format :as jtimef]
+             [clojurewerkz.titanium.graph    :as gr]
+             [clojurewerkz.titanium.edges    :as gre]
+             [clojurewerkz.titanium.vertices :as grv]
+             [clojurewerkz.titanium.types    :as grt]
+             [clojurewerkz.titanium.query    :as grq]))
 
 (declare prn-read str->key)
 
@@ -16,20 +21,21 @@
 )
 
 (def example-experiment
-  (atom    
-    {:ate-salmon {:range-form '(fn [n] (or (false? n) (true? n)))
+  "A silly little example."
+  (atom
+    {:ate-salmon {:validator '(fn [n] (or (false? n) (true? n)))
                   :default false
                   :instances { }
                   :unit "boolean"}
-     :outside    {:range-form '(fn [n] (>= n 0)) 
+     :outside    {:validator '(fn [n] (>= n 0)) 
                   :default :ask
                   :unit "hours"
                   :instances { }}
-     :exercise   {:range-form (set (range 3))
+     :exercise   {:validator (set (range 3))
                   :default 0
                   :unit "subjective strenuousness"
                   :instances { }}
-     :mood       {:range-form (set (range 5))
+     :mood       {:validator (set (range 5))
                   :default 2
                   :unit "holistic mood rating"
                   :instances { }}}))
@@ -48,23 +54,24 @@
         d (if (> d 9) d (str "0" d))]
     (reset! active-time (str y "-" m "-" d))))
 
-(defn add-variable [variable range-form default unit]
-  (assert ((eval range-form) default) "Default not in range!")
-  (swap! experiment #(assoc % (str->key variable)
-                              {:range-form range-form
-                               :default default
-                               :unit unit
-                               :instances {}})))
+(defmacro add-variable [variable validator default unit]
+  `(do (assert (~validator ~default) "Default not in range!")
+       (swap! experiment #(assoc % 
+                                 (str->key ~variable)
+                                 {:validator (quote ~validator)
+                                  :default ~default
+                                  :unit ~unit
+                                  :instances {}}))))
 
 (defn add-variable-guided []
   (let [variable   (prn-read "Enter variable name")
-        range-form (prn-read "Enter range form")
+        validator (prn-read "Enter range form")
         default    (prn-read "Enter default value")
         unit       (prn-read "Enter unit")]
-    (add-variable (str variable) range-form default (str unit))))
+    (eval `(add-variable ~(str variable) ~validator ~default ~(str unit)))))
 
 (defn add-datum [variable value]
-  (assert ((eval (-> @experiment ((str->key variable)) :range-form)) value)
+  (assert ((eval (-> @experiment ((str->key variable)) :validator)) value)
           "Value not in range!")
   (swap! experiment (fn [v]
                      (update-in v 
@@ -105,9 +112,9 @@
   (println (interpose "\n" (partition 5 
                              (interleave (keys @experiment) 
                              (repeat "\t")
-                             (map :range-form (vals @experiment))
+                             (map :unit (vals @experiment))
                              (repeat "\t")
-                             (map :unit (vals @experiment)))))))
+                             (map :validator (vals @experiment)))))))
 
 (defn missing-today []
   (println (interleave (->> @experiment
@@ -116,6 +123,7 @@
                        (repeat "\n"))))
 
 ;~~~~ Helpers ~~~~
+(load "rangefns")
 
 (defn prn-read [p] (do (println p)
                        (read)))
