@@ -1,6 +1,7 @@
 (ns familiar.core
   ;(:gen-class)
    (:require [clj-time.core :as jtime]
+             [clj-time.coerce :as jtimec]
              [clj-time.format :as jtimef]
              [clojurewerkz.titanium.graph    :as gr]
              [clojurewerkz.titanium.edges    :as gre]
@@ -9,6 +10,8 @@
              [clojurewerkz.titanium.query    :as grq]))
 
 (declare prn-read str->key)
+
+(load "rangefns")
 
 (defn -main
   "Gets to know you"
@@ -20,25 +23,33 @@
   ;; view+update statistics
 )
 
+(defn later [a b]
+  (apply > (map jtimec/to-long [a b])))
+(def inst-map (sorted-map-by later))
+
 (def example-experiment
   "A silly little example."
   (atom
-    {:ate-salmon {:validator '(fn [n] (or (false? n) (true? n)))
+    {:ate-salmon {:name "ate-salmon"
+                  :validator 'boolean? 
                   :default false
-                  :instances { }
+                  :instances inst-map 
                   :unit "boolean"}
-     :outside    {:validator '(fn [n] (>= n 0)) 
+     :outside    {:name "outside"
+                  :validator '(interval 0 24) 
                   :default :ask
                   :unit "hours"
-                  :instances { }}
-     :exercise   {:validator (set (range 3))
+                  :instances inst-map}
+     :exercise   {:name "exercise"
+                  :validator '(interval 0 4)
                   :default 0
                   :unit "subjective strenuousness"
-                  :instances { }}
-     :mood       {:validator (set (range 5))
+                  :instances inst-map}
+     :mood       {:name "mood"
+                  :validator '(interval 1 5)
                   :default 2
                   :unit "holistic mood rating"
-                  :instances { }}}))
+                  :instances inst-map}}))
 
 (def experiment example-experiment)
 
@@ -56,16 +67,18 @@
 
 (defmacro add-variable [variable validator default unit]
   `(do (assert (~validator ~default) "Default not in range!")
-       (swap! experiment #(assoc % 
+       (swap! experiment #(assoc %  
                                  (str->key ~variable)
-                                 {:validator (quote ~validator)
+                                 {:name ~variable
+                                  :validator (quote ~validator)
                                   :default ~default
                                   :unit ~unit
-                                  :instances {}}))))
+                                  :instances inst-map}))))
 
+;; dubiously useful
 (defn add-variable-guided []
   (let [variable   (prn-read "Enter variable name")
-        validator (prn-read "Enter range form")
+        validator  (prn-read "Enter range form")
         default    (prn-read "Enter default value")
         unit       (prn-read "Enter unit")]
     (eval `(add-variable ~(str variable) ~validator ~default ~(str unit)))))
@@ -81,6 +94,7 @@
 (defn add-data [& coll]
   (map (partial apply add-datum) (partition 2 coll)))
 
+;; dubiously useful
 (defn add-data-guided []
   (loop [coll []]
     (let [variable (prn-read "Enter variable name or nil to quit")
@@ -117,20 +131,21 @@
                              (map :validator (vals @experiment)))))))
 
 (defn missing-today []
-  (println (interleave (->> @experiment
-                            (remove #(-> % :instances @active-time))
-                            keys)
-                       (repeat "\n"))))
+  (map :name (remove (fn [m]
+                       (->> m
+                            :instances
+                            (#(= (ffirst %) @active-time))))
+                     (vals @experiment))))
+
+;fn to use defaults on today's missing variables
 
 ;~~~~ Helpers ~~~~
-(load "rangefns")
 
 (defn prn-read [p] (do (println p)
                        (read)))
 
 (defn str->key [s] (->> s
-                       str
-                       (replace {\space \-})
-                       (apply str)
-                       .toLowerCase
-                       keyword))
+                        str
+                        (replace {\space \-})
+                        (apply str) .toLowerCase
+                        keyword))
