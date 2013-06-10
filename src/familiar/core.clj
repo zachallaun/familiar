@@ -11,8 +11,6 @@
 
 (declare prn-read str->key)
 
-(load "rangefns")
-
 (defn -main
   "Gets to know you"
   [& args]
@@ -26,6 +24,8 @@
 (defn later [a b]
   (apply > (map jtimec/to-long [a b])))
 (def inst-map (sorted-map-by later))
+
+(load "rangefns")
 
 (def example-experiment
   "A silly little example."
@@ -75,14 +75,6 @@
                                   :unit ~unit
                                   :instances inst-map}))))
 
-;; dubiously useful
-(defn add-variable-guided []
-  (let [variable   (prn-read "Enter variable name")
-        validator  (prn-read "Enter range form")
-        default    (prn-read "Enter default value")
-        unit       (prn-read "Enter unit")]
-    (eval `(add-variable ~(str variable) ~validator ~default ~(str unit)))))
-
 (defn add-datum [variable value]
   (assert ((eval (-> @experiment ((str->key variable)) :validator)) value)
           "Value not in range!")
@@ -93,17 +85,6 @@
 
 (defn add-data [& coll]
   (map (partial apply add-datum) (partition 2 coll)))
-
-;; dubiously useful
-(defn add-data-guided []
-  (loop [coll []]
-    (let [variable (prn-read "Enter variable name or nil to quit")
-          value    (if variable
-                      (prn-read "Enter value or nil to quit")
-                       nil)]
-      (if (some #(= nil %) [variable value])
-        (recur (conj coll (str->key variable) value))
-        (apply add-data coll)))))
 
 (defn save-experiment []
   (spit @active-experiment-name @experiment))
