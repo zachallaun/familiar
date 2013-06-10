@@ -97,7 +97,7 @@
   (spit title {}))
 
 (defn load-experiment [title]
-  #_(assert (= @experiment (read-string (slurp @active-experiment-name)))
+  (assert (= @experiment (read-string (slurp @active-experiment-name)))
           "Data not yet saved!")
   (reset! active-experiment-name title)
   (reset! experiment  
@@ -118,7 +118,10 @@
                             (#(= (ffirst %) @active-time))))
                      (vals @experiment))))
 
-;fn to use defaults on today's missing variables
+(defn let-default [& variables]
+  (apply add-datum (interleave variables
+                               (map :default
+                                    (filter #((set variables) (:name %)) (vals @experiment))))))
 
 ;~~~~ Helpers ~~~~
 
