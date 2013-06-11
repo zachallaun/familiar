@@ -15,3 +15,8 @@
           (and (>= x b) (<= x e))
           true
           :else false)))
+
+(defn time? [x]
+  (try
+    (if (jtimef/parse (jtimef/formatters :hour-minute) x) true)
+    (catch Exception e false)))
