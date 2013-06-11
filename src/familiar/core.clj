@@ -1,5 +1,6 @@
 (ns familiar.core
   ;(:gen-class)
+   (:use [incanter core stats])
    (:require [clj-time.core :as jtime]
              [clj-time.coerce :as jtimec]
              [clj-time.format :as jtimef]
@@ -10,6 +11,8 @@
              [clojurewerkz.titanium.query    :as grq]))
 
 (declare prn-read str->key)
+
+(load "rangefns")
 
 (defn -main
   "Gets to know you"
@@ -25,8 +28,6 @@
   (apply > (map jtimec/to-long [a b])))
 (def inst-map (sorted-map-by later))
 
-(load "rangefns")
-
 (def example-experiment
   "A silly little example."
   (atom
@@ -37,7 +38,7 @@
                   :unit "boolean"}
      :outside    {:name "outside"
                   :validator '(interval 0 24) 
-                  :default :ask
+                  :default 1 
                   :unit "hours"
                   :instances inst-map}
      :exercise   {:name "exercise"
@@ -119,9 +120,11 @@
                      (vals @experiment))))
 
 (defn let-default [& variables]
-  (apply add-datum (interleave variables
-                               (map :default
-                                    (filter #((set variables) (:name %)) (vals @experiment))))))
+  (->> (vals @experiment)
+       (filter #((set variables) (:name %)))
+       (map :default)
+       (interleave variables)
+       (apply add-data)))
 
 ;~~~~ Helpers ~~~~
 
