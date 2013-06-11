@@ -4,6 +4,7 @@
    (:require [clj-time.core :as jtime]
              [clj-time.coerce :as jtimec]
              [clj-time.format :as jtimef]
+             [clj-time.local :as jtimel]
              [clojurewerkz.titanium.graph    :as gr]
              [clojurewerkz.titanium.edges    :as gre]
              [clojurewerkz.titanium.vertices :as grv]
@@ -56,15 +57,15 @@
 
 (def active-experiment-name (atom "data.txt"))
 
-(def time-form    (jtimef/formatters :date))
-(def unparse-time (partial jtimef/unparse time-form))
-(def parse-time   (partial jtimef/parse time-form))
-(def active-time  (atom (unparse-time (jtime/now))))
+(def date-form    (jtimef/formatters :date))
+(def unparse-date (partial jtimef/unparse date-form))
+(def parse-date   (partial jtimef/parse date-form))
+(def active-date  (atom (unparse-date (jtime/now))))
 
 (defn set-date [y m d]
   (let [m (if (> m 9) m (str "0" m))
         d (if (> d 9) d (str "0" d))]
-    (reset! active-time (str y "-" m "-" d))))
+    (reset! active-date (str y "-" m "-" d))))
 
 (defmacro add-variable [variable validator default unit]
   `(do (assert (~validator ~default) "Default not in range!")
@@ -82,7 +83,7 @@
   (swap! experiment (fn [v]
                      (update-in v 
                                 [(str->key variable) :instances] 
-                                #(assoc % @active-time value)))))
+                                #(assoc % @active-date value)))))
 
 (defn add-data [& coll]
   (map (partial apply add-datum) (partition 2 coll)))
@@ -116,7 +117,7 @@
   (map :name (remove (fn [m]
                        (->> m
                             :instances
-                            (#(= (ffirst %) @active-time))))
+                            (#(= (ffirst %) @active-date))))
                      (vals @experiment))))
 
 (defn let-default [& variables]
