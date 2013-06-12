@@ -7,11 +7,11 @@
   ; rel-time may be + or -
   (fn [t]
     (let [times (assoc inst-map t :_,
-                  (unparse-date (jtime/plus (parse-date t) rel-time)) :_)
+                  (unparse-date (plus (parse-date t) rel-time)) :_)
           begin (ffirst times)
           end   (first (last times))]
       (->> (:instances ((keyword variable) @experiment))
-           (filter #(jtime/within? (jtime/interval (parse-date begin)
+           (filter #(within? (interval (parse-date begin)
                                                    (parse-date end))))
-           ; ??
            
+           ))))

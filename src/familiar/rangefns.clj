@@ -1,7 +1,7 @@
 (defn boolean? [x]
   (or (true? x) (false? x)))
 
-(defn interval [b e]
+(defn num-interval [b e]
   "Returns true if a real number on interval [b,e]. Use nil
   instead of a number for infinite upper and/or lower bound."
   (fn [x]
@@ -18,5 +18,5 @@
 
 (defn time? [x]
   (try
-    (if (jtimef/parse (jtimef/formatters :hour-minute) x) true)
+    (if (parse (formatters :hour-minute) x) true)
     (catch Exception e false)))

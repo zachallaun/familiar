@@ -1,35 +1,35 @@
 (ns familiar.core
   ;(:gen-class)
    (:require [clj-time
-               [core   :as jtime :rename {extend elongate}]
-               [coerce :as jtimec]
-               [format :as jtimef]
-               [local  :as jtimel]]
+               [core :refer :all :rename {extend elongate}]
+               [coerce :refer :all]
+               [format :refer :all]
+               [local  :refer :all]]
              [incanter
-               [core   :as incant :rename {extend whatever}]
-               [stats  :as incants]]
-             [clojurewerkz.titanium
-               [graph    :as gr]
-               [edges    :as gre]
-               [vertices :as grv]
-               [types    :as grt]
-               [query    :as grq]]))
+               [core :rename {extend whatever}]
+               [stats :refer :all]]
+             #_[clojurewerkz.titanium
+               [graph :refer :all]
+               [edges :refer :all]
+               [vertices :refer :all]
+               [types :refer :all]
+               [query :refer :all]]))
 
-(declare prn-read str->key nser)
+(declare prn-read str->key nser experiment)
 
 (defn later [a b]
-  (apply > (map jtimec/to-long [a b])))
+  (apply > (map to-long [a b])))
 (def inst-map (sorted-map-by later))
 
-(def date-form    (jtimef/formatters :date))
-(def unparse-date (partial jtimef/unparse date-form))
-(def parse-date   (partial jtimef/parse date-form))
-(def active-date  (atom (unparse-date (jtimel/local-now))))
+(def date-form    (formatters :date))
+(def unparse-date (partial unparse date-form))
+(def parse-date   (partial parse date-form))
+(def active-date  (atom (unparse-date (local-now))))
 
 (def time-form    :hour-minute)
-(def unparse-time #(jtimel/format-local-time % time-form))
-(def parse-time   (partial jtimef/parse (jtimef/formatters time-form)))
-(def active-time  (atom (unparse-time (jtimel/local-now))))
+(def unparse-time #(format-local-time % time-form))
+(def parse-time   (partial parse (formatters time-form)))
+(def active-time  (atom (unparse-time (local-now))))
 
 (load "rangefns")
 (load "propfns")
