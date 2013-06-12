@@ -1,19 +1,38 @@
 (ns familiar.core
   ;(:gen-class)
-   (:use [incanter core stats])
-   (:require [clj-time.core :as jtime]
-             [clj-time.coerce :as jtimec]
-             [clj-time.format :as jtimef]
-             [clj-time.local :as jtimel]
-             [clojurewerkz.titanium.graph    :as gr]
-             [clojurewerkz.titanium.edges    :as gre]
-             [clojurewerkz.titanium.vertices :as grv]
-             [clojurewerkz.titanium.types    :as grt]
-             [clojurewerkz.titanium.query    :as grq]))
+   (:require [clj-time
+               [core   :as jtime :rename {extend elongate}]
+               [coerce :as jtimec]
+               [format :as jtimef]
+               [local  :as jtimel]]
+             [incanter
+               [core   :as incant :rename {extend whatever}]
+               [stats  :as incants]]
+             [clojurewerkz.titanium
+               [graph    :as gr]
+               [edges    :as gre]
+               [vertices :as grv]
+               [types    :as grt]
+               [query    :as grq]]))
 
-(declare prn-read str->key)
+(declare prn-read str->key nser)
+
+(defn later [a b]
+  (apply > (map jtimec/to-long [a b])))
+(def inst-map (sorted-map-by later))
+
+(def date-form    (jtimef/formatters :date))
+(def unparse-date (partial jtimef/unparse date-form))
+(def parse-date   (partial jtimef/parse date-form))
+(def active-date  (atom (unparse-date (jtimel/local-now))))
+
+(def time-form    :hour-minute)
+(def unparse-time #(jtimel/format-local-time % time-form))
+(def parse-time   (partial jtimef/parse (jtimef/formatters time-form)))
+(def active-time  (atom (unparse-time (jtimel/local-now))))
 
 (load "rangefns")
+(load "propfns")
 
 (defn -main
   "Gets to know you"
@@ -24,10 +43,6 @@
   ;; enter+save data
   ;; view+update statistics
 )
-
-(defn later [a b]
-  (apply > (map jtimec/to-long [a b])))
-(def inst-map (sorted-map-by later))
 
 (def example-experiment
   "A silly little example."
@@ -56,11 +71,6 @@
 (def experiment example-experiment)
 
 (def active-experiment-name (atom "data.txt"))
-
-(def date-form    (jtimef/formatters :date))
-(def unparse-date (partial jtimef/unparse date-form))
-(def parse-date   (partial jtimef/parse date-form))
-(def active-date  (atom (unparse-date (jtime/now))))
 
 (defn set-date [y m d]
   (let [m (if (> m 9) m (str "0" m))
@@ -137,3 +147,16 @@
                         (replace {\space \-})
                         (apply str) .toLowerCase
                         keyword))
+
+(defmacro nser [form ns-]
+  "Puts first symbol in form in given namespace"
+  `(list (symbol (str (quote ~ns-)
+                      "/"
+                      (quote ~(first form))))
+         ~@(rest form)))
+
+
+
+
+
+
