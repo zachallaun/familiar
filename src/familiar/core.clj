@@ -26,9 +26,9 @@
 (def parse-date   (partial parse date-form))
 (def active-date  (atom (unparse-date (local-now))))
 
-(def time-form    :hour-minute)
-(def unparse-time #(format-local-time % time-form))
-(def parse-time   (partial parse (formatters time-form)))
+(def time-form    (formatters :basic-date-time-no-ms))
+(def unparse-time (partial unparse time-form))
+(def parse-time   (partial parse time-form))
 (def active-time  (atom (unparse-time (local-now))))
 
 (load "rangefns")
@@ -40,8 +40,6 @@
   ;; i don't know what is this line but here it is
   (alter-var-root #'*read-eval* (constantly false))
   (println "Launching Familiar")
-  ;; enter+save data
-  ;; view+update statistics
 )
 
 (def example-experiment
@@ -85,7 +83,8 @@
                                   :validator (quote ~validator)
                                   :default ~default
                                   :unit ~unit
-                                  :instances inst-map}))))
+                                  :instances inst-map}))
+       (display-vars)))
 
 (defn add-datum [variable value]
   (assert ((eval (-> @experiment ((str->key variable)) :validator)) value)
@@ -116,12 +115,18 @@
           (read-string (slurp title))))
 
 (defn display-vars []
-  (println (interpose "\n" (partition 5 
-                             (interleave (keys @experiment) 
-                             (repeat "\t")
-                             (map :unit (vals @experiment))
-                             (repeat "\t")
-                             (map :validator (vals @experiment)))))))
+  (let [variables (vals @experiment)]
+    (println
+      (interpose "\n"
+                 (partition 7 
+                               (interleave 
+                               (map :name variables)
+                               (repeat "\t")
+                               (map :default variables)
+                               (repeat "\t")
+                               (map :unit variables)
+                               (repeat "\t")
+                               (map :validator variables)))))))
 
 (defn missing-today []
   (map :name (remove (fn [m]
@@ -142,21 +147,10 @@
 (defn prn-read [p] (do (println p)
                        (read)))
 
-(defn str->key [s] (->> s
-                        str
-                        (replace {\space \-})
-                        (apply str) .toLowerCase
-                        keyword))
+(defn str->key [s] 
 
-(defmacro nser [form ns-]
-  "Puts first symbol in form in given namespace"
-  `(list (symbol (str (quote ~ns-)
-                      "/"
-                      (quote ~(first form))))
-         ~@(rest form)))
-
-
-
-
-
-
+                     (->> s
+                          str
+                          (replace {\space \-})
+                          (apply str) .toLowerCase
+                          keyword))
