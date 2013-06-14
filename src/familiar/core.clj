@@ -1,7 +1,6 @@
 (ns familiar.core
   ;(:gen-class)
    (:require [clojure.pprint :refer [pprint]]
-             [clojure.repl :refer [doc]]
              [clj-time
                [core :refer :all :rename {extend elongate}]
                [coerce :refer :all]
@@ -36,13 +35,10 @@
 (load "rangefns")
 (load "propfns")
 
-(defn -main
-  "Gets to know you"
+#_(defn -main
   [& args]
-  ;; i don't know what is this line but here it is
   (alter-var-root #'*read-eval* (constantly false))
-  (println "Launching Familiar")
-)
+  (println "Launching Familiar"))
 
 (def example-experiment
   "A silly little example."
@@ -51,22 +47,26 @@
                   :validator 'boolean? 
                   :default false
                   :instances inst-map 
-                  :unit "boolean"}
+                  :unit "boolean"
+                  :tags '(:food)}
      :outside    {:name "outside"
                   :validator '(interval 0 24) 
                   :default 1 
                   :unit "hours"
-                  :instances inst-map}
+                  :instances inst-map
+                  :tags '()}
      :exercise   {:name "exercise"
                   :validator '(interval 0 4)
                   :default 0
                   :unit "subjective strenuousness"
-                  :instances inst-map}
+                  :instances inst-map
+                  :tags '(:fitness)}
      :mood       {:name "mood"
                   :validator '(interval 1 5)
                   :default 2
                   :unit "holistic mood rating"
-                  :instances inst-map}}))
+                  :instances inst-map
+                  :tags '()}}))
 
 (def experiment example-experiment)
 
@@ -82,34 +82,34 @@
   [variable validator default unit]
   `(do (assert (~validator ~default) "Default not in range!")
        (swap! experiment
-              #(assoc %  
-                      (str->key ~variable)
-                      {:name ~variable
-                       :validator (quote ~validator)
-                       :default ~default
-                       :unit ~unit
-                       :instances inst-map}))
-       (display-vars)))
+              assoc   
+              (str->key ~variable)
+              {:name ~variable
+               :validator (quote ~validator)
+               :default ~default
+               :unit ~unit
+               :instances inst-map
+               :tags '()}))
+       (display-vars))
 
 (defn tag-vars
   "Adds tag to given variables in the current experiment."
   [tag & variables]
   (for [v variables]
     (swap! experiment
-           (fn [x]
-             (update-in x
-                        [(str->key v) :tags]
-                        #(conj % (str->key tag)))))))
+           update-in 
+           [(str->key v) :tags]
+           #(conj % (str->key tag)))))
 
 (defn add-datum
   "Adds a single instance of variable at active date."
   [variable value]
   (assert ((eval (-> @experiment ((str->key variable)) :validator)) value)
           "Value not in range!")
-  (swap! experiment (fn [x]
-                     (update-in x 
-                                [(str->key variable) :instances] 
-                                #(assoc % @active-date value)))))
+  (swap! experiment
+         update-in 
+         [(str->key variable) :instances] 
+         #(assoc % @active-date value)))
 
 (defn add-data 
   "Adds instances of variables with values at active date.
@@ -118,16 +118,18 @@
   [& coll]
   (assert (even? (count coll))
           "Mismatched number of variables and values. Double check call")
-  (map (partial apply add-datum) (partition 2 coll))
+  (doall (map (partial apply add-datum)
+              (partition 2 coll)))
   (display-vars))
 
 (defn save-experiment 
   "Saves the current experiment to source file for current experiment,
      or to a new file if given."
-  [& title]
-  (if (first title)
-    (spit (first title) @experiment)
-    (spit @active-experiment-name @experiment)))
+  ([]
+    (spit @active-experiment-name @experiment))
+  ([title]
+    (reset! active-experiment-name title)
+    (spit title @experiment)))
 
 (defn make-experiment
   "Creates a new experiment with given filename."
@@ -172,8 +174,7 @@
   "Displays all variables with no instance for the active date."
   []
   (map :name (remove (fn [m]
-                       (->> m
-                            :instances
+                       (->> (:instances m)
                             (#(= (ffirst %) @active-date))))
                      (vals @experiment))))
 

@@ -5,16 +5,11 @@
   "Returns true if a real number on interval [b,e]. Use nil
   instead of a number for infinite upper and/or lower bound."
   (fn [x]
-    (try (+ x 0) (catch Exception e false))
-    (cond (and (nil? b) (nil? e))
-          true
+    (when (instance? java.lang.Number x)
+      (or (and (nil? b) (nil? e))
           (and (nil? b) (<= x e))
-          true
           (and (nil? e) (>= x b))
-          true
-          (and (>= x b) (<= x e))
-          true
-          :else false)))
+          (and (>= x b) (<= x e))))))
 
 (defn time? [x]
   (try
