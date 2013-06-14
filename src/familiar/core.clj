@@ -1,6 +1,7 @@
 (ns familiar.core
   ;(:gen-class)
-   (:require [clj-time
+   (:require [clojure.pprint :refer [pprint]]
+             [clj-time
                [core :refer :all :rename {extend elongate}]
                [coerce :refer :all]
                [format :refer :all]
@@ -77,24 +78,35 @@
 
 (defmacro add-variable [variable validator default unit]
   `(do (assert (~validator ~default) "Default not in range!")
-       (swap! experiment #(assoc %  
-                                 (str->key ~variable)
-                                 {:name ~variable
-                                  :validator (quote ~validator)
-                                  :default ~default
-                                  :unit ~unit
-                                  :instances inst-map}))
+       (swap! experiment
+              #(assoc %  
+                      (str->key ~variable)
+                      {:name ~variable
+                       :validator (quote ~validator)
+                       :default ~default
+                       :unit ~unit
+                       :instances inst-map}))
        (display-vars)))
+
+(defn tag-vars [tag & variables]
+  (for [v variables]
+    (swap! experiment
+           (fn [x]
+             (update-in x
+                        [(str->key v) :tags]
+                        #(conj % (str->key tag)))))))
 
 (defn add-datum [variable value]
   (assert ((eval (-> @experiment ((str->key variable)) :validator)) value)
           "Value not in range!")
-  (swap! experiment (fn [v]
-                     (update-in v 
+  (swap! experiment (fn [x]
+                     (update-in x 
                                 [(str->key variable) :instances] 
                                 #(assoc % @active-date value)))))
 
 (defn add-data [& coll]
+  (assert (even? (count coll))
+          "Mismatched number of variables and values. Double check call")
   (map (partial apply add-datum) (partition 2 coll)))
 
 (defn save-experiment []
@@ -115,18 +127,23 @@
           (read-string (slurp title))))
 
 (defn display-vars []
-  (let [variables (vals @experiment)]
-    (println
-      (interpose "\n"
-                 (partition 7 
-                               (interleave 
-                               (map :name variables)
-                               (repeat "\t")
-                               (map :default variables)
-                               (repeat "\t")
-                               (map :unit variables)
-                               (repeat "\t")
-                               (map :validator variables)))))))
+  (let [tags (->> (vals @experiment)
+                  (map :tags)
+                  flatten
+                  set),
+        keyfil #(select-keys % [:default :validator :unit :name]),
+        grouped-vars (filter #(or (keyword? %) (not (empty? %)))
+                     (interleave 
+                       (cons :no-tag tags)
+                       (cons 
+                           (map keyfil
+                                (filter #(nil? (:tags %))
+                                        (vals @experiment)))
+                           (for [tag tags]
+                               (map keyfil
+                                    (filter #(some (partial = tag) (:tags %))
+                                            (vals @experiment)))))))]
+    (pprint grouped-vars)))
 
 (defn missing-today []
   (map :name (remove (fn [m]
@@ -144,13 +161,13 @@
 
 ;~~~~ Helpers ~~~~
 
-(defn prn-read [p] (do (println p)
-                       (read)))
+(defn prn-read [p]
+  (println p)
+  (read))
 
 (defn str->key [s] 
-
-                     (->> s
-                          str
-                          (replace {\space \-})
-                          (apply str) .toLowerCase
-                          keyword))
+  (->> s
+       str
+       (replace {\space \-})
+       (apply str) .toLowerCase
+       keyword))
