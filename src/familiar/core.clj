@@ -1,6 +1,7 @@
 (ns familiar.core
   ;(:gen-class)
    (:require [clojure.pprint :refer [pprint]]
+             [clojure.repl :refer [doc]]
              [clj-time
                [core :refer :all :rename {extend elongate}]
                [coerce :refer :all]
@@ -16,7 +17,7 @@
                [types :refer :all]
                [query :refer :all]]))
 
-(declare prn-read str->key nser experiment)
+(declare prn-read str->key experiment display-vars)
 
 (defn later [a b]
   (apply > (map to-long [a b])))
@@ -76,7 +77,9 @@
         d (if (> d 9) d (str "0" d))]
     (reset! active-date (str y "-" m "-" d))))
 
-(defmacro add-variable [variable validator default unit]
+(defmacro add-variable
+  "Adds variable to current experiment."
+  [variable validator default unit]
   `(do (assert (~validator ~default) "Default not in range!")
        (swap! experiment
               #(assoc %  
@@ -88,7 +91,9 @@
                        :instances inst-map}))
        (display-vars)))
 
-(defn tag-vars [tag & variables]
+(defn tag-vars
+  "Adds tag to given variables in the current experiment."
+  [tag & variables]
   (for [v variables]
     (swap! experiment
            (fn [x]
@@ -96,7 +101,9 @@
                         [(str->key v) :tags]
                         #(conj % (str->key tag)))))))
 
-(defn add-datum [variable value]
+(defn add-datum
+  "Adds a single instance of variable at active date."
+  [variable value]
   (assert ((eval (-> @experiment ((str->key variable)) :validator)) value)
           "Value not in range!")
   (swap! experiment (fn [x]
@@ -104,29 +111,45 @@
                                 [(str->key variable) :instances] 
                                 #(assoc % @active-date value)))))
 
-(defn add-data [& coll]
+(defn add-data 
+  "Adds instances of variables with values at active date.
+     Example:
+     (add-data \"mice\" 6 \"cats\" 2 \"dogs\" 0)"
+  [& coll]
   (assert (even? (count coll))
           "Mismatched number of variables and values. Double check call")
-  (map (partial apply add-datum) (partition 2 coll)))
+  (map (partial apply add-datum) (partition 2 coll))
+  (display-vars))
 
-(defn save-experiment []
-  (spit @active-experiment-name @experiment))
+(defn save-experiment 
+  "Saves the current experiment to source file for current experiment,
+     or to a new file if given."
+  [& title]
+  (if (first title)
+    (spit (first title) @experiment)
+    (spit @active-experiment-name @experiment)))
 
-(defn make-experiment [title]
+(defn make-experiment
+  "Creates a new experiment with given filename."
+  [title]
   (assert (= (do (spit title "" :append true)
                  (slurp title))
              "")
           "Experiment by that name already exists")
   (spit title {}))
 
-(defn load-experiment [title]
+(defn load-experiment 
+  "Loads experiment from file, ensuring current experiment has been saved."
+  [title]
   (assert (= @experiment (read-string (slurp @active-experiment-name)))
           "Data not yet saved!")
   (reset! active-experiment-name title)
   (reset! experiment  
           (read-string (slurp title))))
 
-(defn display-vars []
+(defn display-vars
+  "Displays info for variables in active experiment, grouped by tags." 
+  []
   (let [tags (->> (vals @experiment)
                   (map :tags)
                   flatten
@@ -145,29 +168,40 @@
                                             (vals @experiment)))))))]
     (pprint grouped-vars)))
 
-(defn missing-today []
+(defn missing-today
+  "Displays all variables with no instance for the active date."
+  []
   (map :name (remove (fn [m]
                        (->> m
                             :instances
                             (#(= (ffirst %) @active-date))))
                      (vals @experiment))))
 
-(defn let-default [& variables]
+(defn let-default 
+  "Allows specified variables to take on their default values."
+  [& variables]
   (->> (vals @experiment)
        (filter #((set variables) (:name %)))
        (map :default)
        (interleave variables)
        (apply add-data)))
 
+(defn help []
+  (->> (for [[n v] (ns-publics 'familiar.core)]
+         [(str "- " n) "\n    " (:doc (meta v))])
+       (remove #(nil? (nth % 2)))
+       (interpose "\n")
+       flatten
+       println))
+
 ;~~~~ Helpers ~~~~
 
-(defn prn-read [p]
+(defn- prn-read [p]
   (println p)
   (read))
 
-(defn str->key [s] 
-  (->> s
-       str
+(defn- str->key [s] 
+  (->> (str s)
        (replace {\space \-})
        (apply str) .toLowerCase
        keyword))
