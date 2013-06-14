@@ -9,4 +9,4 @@
            (filter #(within? (interval (parse-date begin)
                                        (parse-date end)) %))
            ; ????
-         )))) 
+         ))))

@@ -43,17 +43,19 @@
   (println "Launching Familiar")
 )
 
+(defrecord Variable [name validator default unit instances])
+
 (def example-experiment
   "A silly little example."
   (atom
-    {:ate-salmon {:name "ate-salmon"
-                  :validator 'boolean? 
+    {:ate-salmon #familiar.core/Variable{:name "ate-salmon"
+                  :validator 'boolean?
                   :default false
-                  :instances inst-map 
+                  :instances inst-map
                   :unit "boolean"}
      :outside    {:name "outside"
-                  :validator '(interval 0 24) 
-                  :default 1 
+                  :validator '(interval 0 24)
+                  :default 1
                   :unit "hours"
                   :instances inst-map}
      :exercise   {:name "exercise"
@@ -67,6 +69,14 @@
                   :unit "holistic mood rating"
                   :instances inst-map}}))
 
+(defn- add-variable-to-experiment
+  [name validator default unit]
+  (swap! example-experiment assoc (str->key name)
+         (->Variable name 'validator default unit inst-map)))
+
+(defmacro add-variable [name validator default unit]
+  `(add-variable-to-experiment ~name '~validator ~default ~unit))
+
 (def experiment example-experiment)
 
 (def active-experiment-name (atom "data.txt"))
@@ -79,7 +89,7 @@
 (defmacro add-variable [variable validator default unit]
   `(do (assert (~validator ~default) "Default not in range!")
        (swap! experiment
-              #(assoc %  
+              #(assoc %
                       (str->key ~variable)
                       {:name ~variable
                        :validator (quote ~validator)
@@ -96,18 +106,25 @@
                         [(str->key v) :tags]
                         #(conj % (str->key tag)))))))
 
-(defn add-datum [variable value]
-  (assert ((eval (-> @experiment ((str->key variable)) :validator)) value)
+(defn add-datum  [experiment variable value]
+  (assert ((eval (-> experiment ((str->key variable)) :validator)) value)
           "Value not in range!")
-  (swap! experiment (fn [x]
-                     (update-in x 
-                                [(str->key variable) :instances] 
-                                #(assoc % @active-date value)))))
+  (update-in experiment
+             [(str->key variable) :instances]
+             #(assoc % @active-date value)))
 
-(defn add-data [& coll]
+(defn add-datum! [variable value]
+  (swap! experiment add-datum variable value))
+
+(defn add-data [experiment & coll]
   (assert (even? (count coll))
           "Mismatched number of variables and values. Double check call")
-  (map (partial apply add-datum) (partition 2 coll)))
+  (reduce (fn [exp x] (apply add-datum exp x))
+          experiment
+          (partition 2 coll)))
+
+(defn add-data! [& coll]
+  (swap! experiment (fn [x] (apply add-data x))))
 
 (defn save-experiment []
   (spit @active-experiment-name @experiment))
@@ -123,7 +140,7 @@
   (assert (= @experiment (read-string (slurp @active-experiment-name)))
           "Data not yet saved!")
   (reset! active-experiment-name title)
-  (reset! experiment  
+  (reset! experiment
           (read-string (slurp title))))
 
 (defn display-vars []
@@ -133,9 +150,9 @@
                   set),
         keyfil #(select-keys % [:default :validator :unit :name]),
         grouped-vars (filter #(or (keyword? %) (not (empty? %)))
-                     (interleave 
+                     (interleave
                        (cons :no-tag tags)
-                       (cons 
+                       (cons
                            (map keyfil
                                 (filter #(nil? (:tags %))
                                         (vals @experiment)))
@@ -147,9 +164,9 @@
 
 (defn missing-today []
   (map :name (remove (fn [m]
-                       (->> m
-                            :instances
-                            (#(= (ffirst %) @active-date))))
+                       (->> (:instances m)
+                            (ffirst)
+                            (= @active-data)))
                      (vals @experiment))))
 
 (defn let-default [& variables]
@@ -165,9 +182,8 @@
   (println p)
   (read))
 
-(defn str->key [s] 
-  (->> s
-       str
+(defn str->key [s]
+  (->> (str s)
        (replace {\space \-})
        (apply str) .toLowerCase
        keyword))
