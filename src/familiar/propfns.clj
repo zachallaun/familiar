@@ -1,8 +1,8 @@
 (defn- inst-in-int [begin end instmap]
   (->> instmap
-       (filter #(within? (interval (parse-date begin)
-                                   (parse-date end))
-                         (parse-date (key %))))
+       (filter #(within? (interval (parse-time begin)
+                                   (parse-time end))
+                         (parse-time (key %))))
        flatten
        (apply assoc inst-map)))
 
@@ -20,7 +20,7 @@
     (val-prop-time \"caffeine\" #{0} 0 (days 1))"
   (fn [t]
     (let [times (assoc inst-map t :_,
-                  (unparse-date (plus (parse-date t) rel-time)) :_)
+                  (unparse-time (plus (parse-time t) rel-time)) :_)
           end   (ffirst times)
           begin (first (last times))]
       (->> (:instances ((str->key variable) @experiment))

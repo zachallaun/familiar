@@ -1,6 +1,7 @@
 (ns familiar.core
   ;(:gen-class)
    (:require [clojure.pprint :refer [pprint]]
+             [swiss-arrows.core :refer :all]
              [clj-time
                [core :refer :all :rename {extend elongate}]
                [coerce :refer :all]
@@ -16,22 +17,9 @@
                [types :refer :all]
                [query :refer :all]]))
 
-(declare prn-read str->key experiment display-vars)
+(declare prn-read str->key active-expt display-vars)
 
-(defn later [a b]
-  (apply > (map to-long [a b])))
-(def inst-map (sorted-map-by later))
-
-(def date-form    (formatters :date))
-(def unparse-date (partial unparse date-form))
-(def parse-date   (partial parse date-form))
-(def active-date  (atom (unparse-date (local-now))))
-
-(def time-form    (formatters :basic-date-time-no-ms))
-(def unparse-time (partial unparse time-form))
-(def parse-time   (partial parse time-form))
-(def active-time  (atom (unparse-time (local-now))))
-
+(load "time")
 (load "rangefns")
 (load "propfns")
 
@@ -48,51 +36,70 @@
                   :default false
                   :instances inst-map 
                   :unit "boolean"
+                  :time-res :day
                   :tags '(:food)}
      :outside    {:name "outside"
-                  :validator '(interval 0 24) 
+                  :validator '(num-interval 0 24) 
                   :default 1 
                   :unit "hours"
                   :instances inst-map
+                  :time-res :day
                   :tags '()}
      :exercise   {:name "exercise"
-                  :validator '(interval 0 4)
+                  :validator #{0 1 2 3} 
                   :default 0
                   :unit "subjective strenuousness"
                   :instances inst-map
+                  :time-res :day
                   :tags '(:fitness)}
      :mood       {:name "mood"
-                  :validator '(interval 1 5)
+                  :validator #{1 2 3 4 5}
                   :default 2
                   :unit "holistic mood rating"
                   :instances inst-map
+                  :time-res :day
                   :tags '()}}))
 
-(def experiment example-experiment)
+(def active-expt example-experiment)
 
 (def active-experiment-name (atom "data.txt"))
 
-(defn set-date [y m d]
-  (let [m (if (> m 9) m (str "0" m))
-        d (if (> d 9) d (str "0" d))]
-    (reset! active-date (str y "-" m "-" d))))
+(defmacro add-var
+  "Adds variable to experiment.
+     Optional arguments:
+     :expt - name of a loaded experiment (defaults to active experiment)
+     :time-res - time resolution (defaults to :day)
+     :unit - a string representing the unit of measure
+     :tags - a sequence of strings with which to tag the variable"
+  [variable validator default & opts]
+  `(add-variable- ~variable '~validator ~default ~@opts))
 
-(defmacro add-variable
-  "Adds variable to current experiment."
-  [variable validator default unit]
-  `(do (assert (~validator ~default) "Default not in range!")
-       (swap! experiment
-              assoc   
-              (str->key ~variable)
-              {:name ~variable
-               :validator (quote ~validator)
-               :default ~default
-               :unit ~unit
-               :instances inst-map
-               :tags '()}))
-       (display-vars))
+(defn- add-variable-
+  [variable validator default
+   & {:keys [expt time-res unit tags]
+        :or {expt active-expt
+             time-res :day
+             unit ""
+             tags '()}}]
+  (let [varkey (str->key variable)
+        valfn (eval validator)
+        tags (map str->key tags)]
+    (assert (nil? (varkey @expt)) "Variable already exists") 
+    (assert (valfn default) "Default not in range")
+    (swap! expt 
+           assoc   
+           varkey
+           {:name variable
+            :validator validator
+            :default default
+            :unit unit
+            :instances inst-map
+            :time-res (keyword time-res)
+            :tags tags})
+    (display-vars)))
 
-(defn tag-vars
+;;;;
+(defn tag-var
   "Adds tag to given variables in the current experiment."
   [tag & variables]
   (for [v variables]
@@ -101,18 +108,25 @@
            [(str->key v) :tags]
            #(conj % (str->key tag)))))
 
+;;;; assert no data within current time increment
 (defn add-datum
-  "Adds a single instance of variable at active date."
-  [variable value]
-  (assert ((eval (-> @experiment ((str->key variable)) :validator)) value)
-          "Value not in range!")
-  (swap! experiment
+  "Adds a single instance of variable."
+  [variable value & {:keys [expt instant]
+                     :or {expt active-expt
+                          instant @active-time}}]
+  (assert ((eval (-> @expt 
+                     ((str->key variable))
+                     :validator))
+           value)
+          "Value not in range")
+  (swap! expt 
          update-in 
          [(str->key variable) :instances] 
-         #(assoc % @active-date value)))
+         #(assoc % instant value)))
 
+;;;;
 (defn add-data 
-  "Adds instances of variables with values at active date.
+  "Adds instances of variables with values at active time.
      Example:
      (add-data \"mice\" 6 \"cats\" 2 \"dogs\" 0)"
   [& coll]
@@ -123,13 +137,13 @@
   (display-vars))
 
 (defn save-experiment 
-  "Saves the current experiment to source file for current experiment,
+  "Saves the active experiment to its source file,
      or to a new file if given."
   ([]
-    (spit @active-experiment-name @experiment))
+    (spit @active-experiment-name @active-expt))
   ([title]
     (reset! active-experiment-name title)
-    (spit title @experiment)))
+    (spit title @active-expt)))
 
 (defn make-experiment
   "Creates a new experiment with given filename."
@@ -143,16 +157,16 @@
 (defn load-experiment 
   "Loads experiment from file, ensuring current experiment has been saved."
   [title]
-  (assert (= @experiment (read-string (slurp @active-experiment-name)))
+  (assert (= @active-expt (read-string (slurp @active-experiment-name)))
           "Data not yet saved!")
   (reset! active-experiment-name title)
-  (reset! experiment  
+  (reset! active-expt  
           (read-string (slurp title))))
 
 (defn display-vars
   "Displays info for variables in active experiment, grouped by tags." 
   []
-  (let [tags (->> (vals @experiment)
+  (let [tags (->> (vals @active-expt)
                   (map :tags)
                   flatten
                   set),
@@ -175,13 +189,13 @@
   []
   (map :name (remove (fn [m]
                        (->> (:instances m)
-                            (#(= (ffirst %) @active-date))))
-                     (vals @experiment))))
+                            (#(= (ffirst %) @active-time))))
+                     (vals @active-expt))))
 
 (defn let-default 
   "Allows specified variables to take on their default values."
   [& variables]
-  (->> (vals @experiment)
+  (->> (vals @active-expt)
        (filter #((set variables) (:name %)))
        (map :default)
        (interleave variables)
@@ -204,5 +218,6 @@
 (defn- str->key [s] 
   (->> (str s)
        (replace {\space \-})
-       (apply str) .toLowerCase
+       (apply str) 
+       .toLowerCase
        keyword))
