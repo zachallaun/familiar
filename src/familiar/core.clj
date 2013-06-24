@@ -48,8 +48,8 @@
                   :time-res :date
                   :tags '()}}))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;~~~~ Experiment management ~~~~
+;;;;;;;;;;;;;;;;;;;;;;
+;~~~~ Experiments ~~~~
 
 (def active-expt example-experiment)
 
@@ -85,18 +85,19 @@
   (reset! active-expt
           (read-string (slurp file))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;~~~~~ Variables and Data ~~~~
+;;;;;;;;;;;;;;;;;;;;
+;~~~~ Variables ~~~~
 
 (defmacro add-var
   "Adds variable to experiment.
      Optional arguments:
      :expt - name of a loaded experiment (defaults to active experiment)
-     :time-res - time resolution (defaults to :day)
+     :time-res - time resolution (defaults to :date, can be :date-time)
      :unit - a string representing the unit of measure
      :tags - a sequence of strings with which to tag the variable"
   [variable validator default & opts]
   `(add-variable- ~variable '~validator ~default ~@opts))
+
 (defn- add-variable-
   [variable validator default
    & {:keys [expt time-res unit tags]
@@ -119,6 +120,27 @@
             :time-res (keyword time-res)
             :tags tags})
     (display-vars)))
+
+(defn tag-vars
+  "Adds tag to each var in collection in an experiment"
+  [tag vars & {:keys [expt]
+                 :or {expt active-expt}}]
+  (doall (for [v vars]
+    (swap! expt 
+           update-in 
+           [(str->key v) :tags]
+           #(conj % (str->key tag)))))
+  (display-vars))
+
+(defn display-vars
+  "Displays info for variables in active experiment" 
+  [& {:keys [expt]
+        :or {expt active-expt}}]
+  (let [keyfilter #(select-keys % [:default :validator :tags :unit :name])]
+    (pprint (map keyfilter (vals @expt)))))
+
+;;;;;;;;;;;;;;;
+;~~~~ Data ~~~~
 
 (defn add-datum
   "Adds a single instance of variable."
@@ -145,60 +167,33 @@
           "Mismatched number of variables and values. Double check call")
   (doall (map (partial apply add-datum)
               (map #(conj (vec %) :expt expt :instant instant)
-                   (partition 2 coll))))
+                    (partition 2 coll))))
   (display-vars))
 
-;;;;
-(defn tag-vars
-  "Adds tag to each var in collection in an experiment."
-  [tag vars & {:keys [expt]
-                 :or {expt active-expt}}]
-  (for [v vars]
-    (swap! expt 
-           update-in 
-           [(str->key v) :tags]
-           #(conj % (str->key tag)))))
-
-;; desperately needs rewriting, good lord
-(defn display-vars
-  "Displays info for variables in active experiment, grouped by tags." 
-  []
-  (let [tags (->> (vals @active-expt)
-                  (map :tags)
-                  flatten
-                  set),
-        keyfil #(select-keys % [:default :validator :unit :name]),
-        grouped-vars (filter #(or (keyword? %) (not (empty? %)))
-                     (interleave 
-                       (cons :no-tag tags)
-                       (cons 
-                           (map keyfil
-                                (filter #(nil? (:tags %))
-                                        (vals @active-expt)))
-                           (for [tag tags]
-                               (map keyfil
-                                    (filter #(some (partial = tag) (:tags %))
-                                            (vals @active-expt)))))))]
-    (pprint grouped-vars)))
-
-;;;;
 (defn missing-today
   "Displays all variables with no instance for their
-     time pixel overlapping the active time."
-  []
-  (map :name (remove (fn [m]
-                       (->> (:instances m)
-                            (#(= (ffirst %) @active-time))))
-                     (vals @active-expt))))
+     time pixel overlapping the active time/given time."
+  [& {:keys [expt instant]
+        :or {expt active-expt
+             instant @active-time}}]
+  (->> (vals @expt)
+       (filter #(nil? ((:instances %) (chop-time instant (:time-res %)))))
+       (map :name)
+       pprint))
 
 (defn let-default 
-  "Allows specified variables to take on their default values."
-  [& variables]
-  (->> (vals @active-expt)
-       (filter #((set variables) (:name %)))
-       (map :default)
-       (interleave variables)
-       (apply add-data)))
+  "Allows collection of variables to take on their default values"
+  [variables & {:keys [expt instant]
+                  :or {expt active-expt
+                       instant @active-time}}]
+  (-<>> (vals @expt)
+        (filter #((set variables) (:name %)))
+        (map :default)
+        (interleave variables)
+        (add-data <> :expt expt :instant instant)))
+
+;;;;;;;;;;;;;;;;;;
+;~~~~ Helpers ~~~~
 
 (defn help []
   (->> (for [[n v] (ns-publics 'familiar.core)]
@@ -207,8 +202,6 @@
        (interpose "\n")
        flatten
        println))
-
-;~~~~ Helpers ~~~~
 
 (defn- str->key [s] 
   (->> (str s)
