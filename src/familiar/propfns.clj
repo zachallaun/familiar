@@ -23,7 +23,7 @@
                   (unparse-time (plus (parse-time t) rel-time)) :_)
           end   (ffirst times)
           begin (first (last times))]
-      (->> (:instances ((str->key variable) @experiment))
+      (->> (:instances ((str->key variable) @active-expt))
            (inst-in-int begin end)
            vals
            (group-by validator)

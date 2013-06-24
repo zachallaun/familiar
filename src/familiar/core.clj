@@ -1,32 +1,20 @@
 (ns familiar.core
   ;(:gen-class)
    (:require [clojure.pprint :refer [pprint]]
+             [clojure.tools.namespace.repl :refer [refresh]]
              [swiss-arrows.core :refer :all]
              [clj-time
-               [core :refer :all :rename {extend elongate}]
-               [coerce :refer :all]
-               [format :refer :all]
-               [local  :refer :all]]
-             [incanter
-               [core :rename {extend whatever}]
-               [stats :refer :all]]
-             #_[clojurewerkz.titanium
-               [graph :refer :all]
-               [edges :refer :all]
-               [vertices :refer :all]
-               [types :refer :all]
-               [query :refer :all]]))
+               [core :refer :all :rename {extend elongate}] 
+               [coerce :refer :all] 
+               [format :refer :all] 
+               [local :refer :all]]))
 
-(declare prn-read str->key active-expt display-vars)
+;; forward declarations required, just like in history class! cool!
+(declare str->key active-expt display-vars)
 
 (load "time")
 (load "rangefns")
 (load "propfns")
-
-#_(defn -main
-  [& args]
-  (alter-var-root #'*read-eval* (constantly false))
-  (println "Launching Familiar"))
 
 (def example-experiment
   "A silly little example."
@@ -60,9 +48,45 @@
                   :time-res :day
                   :tags '()}}))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~ Experiment management ~~~~
+
 (def active-expt example-experiment)
 
-(def active-experiment-name (atom "data.txt"))
+(def active-expt-name (atom "data"))
+
+(defn save-expt 
+  "Saves an experiment to a file, defaulting to 
+     active experiment and its source file.
+     Keyword arguments:
+     :expt - name of experiment
+     :file - file to write to"
+  [& {:keys [expt file]
+        :or {expt active-expt
+             file @active-expt-name}}]
+  (spit file @active-expt))
+
+(defn make-expt
+  "Puts a blank experiment into a new file of given name."
+  [file]
+  (assert (= (do (spit file "" :append true)
+                 (slurp file))
+             "")
+          "Experiment by that name already exists")
+  (spit file {}))
+
+(defn load-expt
+  "Loads experiment from file, ensuring current 
+     experiment has been saved to its source."
+  [file]
+  (assert (= @active-expt (read-string (slurp @active-expt-name)))
+          "Data not yet saved!")
+  (reset! active-expt-name file)
+  (reset! active-expt
+          (read-string (slurp file))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~ Variables and Data ~~~~
 
 (defmacro add-var
   "Adds variable to experiment.
@@ -103,12 +127,12 @@
   "Adds tag to given variables in the current experiment."
   [tag & variables]
   (for [v variables]
-    (swap! experiment
+    (swap! active-expt 
            update-in 
            [(str->key v) :tags]
            #(conj % (str->key tag)))))
 
-;;;; assert no data within current time increment
+;;;; replace data within current time pixel 
 (defn add-datum
   "Adds a single instance of variable."
   [variable value & {:keys [expt instant]
@@ -136,33 +160,7 @@
               (partition 2 coll)))
   (display-vars))
 
-(defn save-experiment 
-  "Saves the active experiment to its source file,
-     or to a new file if given."
-  ([]
-    (spit @active-experiment-name @active-expt))
-  ([title]
-    (reset! active-experiment-name title)
-    (spit title @active-expt)))
-
-(defn make-experiment
-  "Creates a new experiment with given filename."
-  [title]
-  (assert (= (do (spit title "" :append true)
-                 (slurp title))
-             "")
-          "Experiment by that name already exists")
-  (spit title {}))
-
-(defn load-experiment 
-  "Loads experiment from file, ensuring current experiment has been saved."
-  [title]
-  (assert (= @active-expt (read-string (slurp @active-experiment-name)))
-          "Data not yet saved!")
-  (reset! active-experiment-name title)
-  (reset! active-expt  
-          (read-string (slurp title))))
-
+;; desperately needs rewriting, good lord
 (defn display-vars
   "Displays info for variables in active experiment, grouped by tags." 
   []
@@ -177,15 +175,17 @@
                        (cons 
                            (map keyfil
                                 (filter #(nil? (:tags %))
-                                        (vals @experiment)))
+                                        (vals @active-expt)))
                            (for [tag tags]
                                (map keyfil
                                     (filter #(some (partial = tag) (:tags %))
-                                            (vals @experiment)))))))]
+                                            (vals @active-expt)))))))]
     (pprint grouped-vars)))
 
+;;;;
 (defn missing-today
-  "Displays all variables with no instance for the active date."
+  "Displays all variables with no instance for their
+     time pixel overlapping the active time."
   []
   (map :name (remove (fn [m]
                        (->> (:instances m)
@@ -211,13 +211,14 @@
 
 ;~~~~ Helpers ~~~~
 
-(defn- prn-read [p]
-  (println p)
-  (read))
-
 (defn- str->key [s] 
   (->> (str s)
        (replace {\space \-})
        (apply str) 
        .toLowerCase
        keyword))
+
+#_(defn -main
+  [& args]
+  (alter-var-root #'*read-eval* (constantly false))
+  (println "Launching Familiar"))

@@ -5,6 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.nrepl "0.2.3"]
+                 [org.clojure/tools.namespace "0.2.3"]
                  [swiss-arrows "0.6.0"]
                  [clj-time "0.5.1"]
                  [incanter "1.5.0-SNAPSHOT"]
