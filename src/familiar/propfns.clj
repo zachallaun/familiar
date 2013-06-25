@@ -6,6 +6,7 @@
        flatten
        (apply assoc inst-map)))
 
+;; needs to work for keyword instances
 (defn val-prop-time [variable validator proportion rel-time]
   "True when variable passes validator for >= proportion of instances
     over interval rel-time. Rel-time may be negative.

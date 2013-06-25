@@ -154,7 +154,7 @@
     (swap! expt 
            update-in 
            [(str->key varname) :instances] 
-           #(assoc % instant value))))
+           #(assoc % (keyword instant) value))))
 
 (defn add-data 
   "Adds instances of variables with values.
@@ -171,14 +171,26 @@
   (display-vars))
 
 (defn missing-today
-  "Displays all variables with no instance for their
-     time pixel overlapping the active time/given time."
+  "Displays all variables with no instance for the
+     time pixel matching the active time/given time."
   [& {:keys [expt instant]
         :or {expt active-expt
              instant @active-time}}]
   (->> (vals @expt)
        (filter #(nil? ((:instances %) (chop-time instant (:time-res %)))))
        (map :name)
+       pprint))
+
+(defn entered-today
+  "Displays values for variables with an instance within
+     the time pixel matching the active time/given time."
+  [& {:keys [expt instant]
+        :or {expt active-expt
+             instant @active-time}}]
+  (->> (vals @expt)
+       (remove #(nil? ((:instances %) (chop-time instant (:time-res %)))))
+       (map #(vector (:name %)
+                     ((chop-time instant (:time-res %)) (:instances %))))
        pprint))
 
 (defn let-default 

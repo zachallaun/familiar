@@ -13,5 +13,5 @@
 
 (defn time? [x]
   (try
-    (if (parse (formatters :hour-minute) x) true)
+    (if (parse (formatters :time) x) true)
     (catch Exception e false)))
