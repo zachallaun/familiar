@@ -121,6 +121,16 @@
             :tags tags})
     (display-vars)))
 
+(defn change-field
+  "Destructively changes a field for a variable."
+  [variable field value & {:keys [expt]
+                             :or {expt active-expt}}]
+  (swap! expt
+         update-in
+         [(str->key variable) field]
+         (constantly value)))
+
+
 (defn tag-vars
   "Adds tag to each var in collection in an experiment"
   [tag vars & {:keys [expt]
