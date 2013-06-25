@@ -214,6 +214,14 @@
         (interleave variables)
         (add-data <> :expt expt :instant instant)))
 
+(defn change-day 
+  "Sets active time n days ahead or behind."
+  [n]
+  (swap! active-time
+         #(-> (parse-time %)
+              (plus (days n))
+              unparse-time)))
+
 ;;;;;;;;;;;;;;;;;;
 ;~~~~ Helpers ~~~~
 
