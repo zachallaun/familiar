@@ -12,6 +12,8 @@
 ;; forward declarations required, just like in history class! cool!
 (declare str->key active-expt display-vars)
 
+(defrecord Variable [name validator default instances unit time-res tags])
+
 (load "time")
 (load "rangefns")
 (load "propfns")
@@ -19,34 +21,38 @@
 (def example-experiment
   "A silly little example."
   (atom
-    {:ate-salmon {:name "ate-salmon"
-                  :validator 'boolean? 
-                  :default false
-                  :instances inst-map 
-                  :unit "boolean"
-                  :time-res :date
-                  :tags '(:food)}
-     :outside    {:name "outside"
-                  :validator '(num-interval 0 24) 
-                  :default 1 
-                  :unit "hours"
-                  :instances inst-map
-                  :time-res :date
-                  :tags '()}
-     :exercise   {:name "exercise"
-                  :validator #{0 1 2 3} 
-                  :default 0
-                  :unit "subjective strenuousness"
-                  :instances inst-map
-                  :time-res :date
-                  :tags '(:fitness)}
-     :mood       {:name "mood"
-                  :validator #{1 2 3 4 5}
-                  :default 2
-                  :unit "holistic mood rating"
-                  :instances inst-map
-                  :time-res :date
-                  :tags '()}}))
+    {:ate-salmon (Variable/create
+                   {:name "ate-salmon"
+                    :validator 'boolean? 
+                    :default false
+                    :instances inst-map 
+                    :unit "boolean"
+                    :time-res :date
+                    :tags '(:food)})
+     :outside    (Variable/create
+                   {:name "outside"
+                    :validator '(num-interval 0 24) 
+                    :default 1 
+                    :unit "hours"
+                    :instances inst-map
+                    :time-res :date
+                    :tags '()})
+     :exercise   (Variable/create
+                   {:name "exercise"
+                    :validator #{0 1 2 3} 
+                    :default 0
+                    :unit "subjective strenuousness"
+                    :instances inst-map
+                    :time-res :date
+                    :tags '(:fitness)})
+     :mood       (Variable/create
+                   {:name "mood"
+                    :validator #{1 2 3 4 5}
+                    :default 2
+                    :unit "holistic mood rating"
+                    :instances inst-map
+                    :time-res :date
+                    :tags '()})}))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~ Experiments ~~~~
@@ -112,13 +118,13 @@
     (swap! expt 
            assoc   
            varkey
-           {:name variable
-            :validator validator
-            :default default
-            :unit unit
-            :instances inst-map
-            :time-res (keyword time-res)
-            :tags tags})
+           (Variable. variable
+                      validator
+                      default
+                      inst-map
+                      unit
+                      (keyword time-res)
+                      tags))
     (display-vars)))
 
 (defn change-field
