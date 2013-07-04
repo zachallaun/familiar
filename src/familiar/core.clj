@@ -31,16 +31,16 @@
 ;; Experiments
 ;;
 
-(def db (atom (h2 {:db "data/derp.db"})))
+(def db (atom (h2 {:db "data/default/default.db"})))
 
 (defn open!
   "Changes active experiment to that with the specified name"
   [file]
-  (reset! db (h2 {:db (str "data/" file ".db")}))
+  (reset! db (h2 {:db (str "data/" file  "/" file ".db")}))
   (defdb korma-db @db)
   (create-tables @db))
 
-(open! "derp")
+(open! "default")
 
 ;;;;;;;;;;;;;
 ;; Variables
