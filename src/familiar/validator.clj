@@ -1,3 +1,6 @@
+(ns familiar.validator
+  (:require [clj-time.format :refer [parse formatters]]))
+
 (defn boolean? [x]
   (or (true? x) (false? x)))
 
@@ -9,7 +12,7 @@
       (or (and (nil? b) (nil? e))
           (and (nil? b) (<= x e))
           (and (nil? e) (>= x b))
-          (and (>= x b) (<= x e))))))
+          (<= b x e)))))
 
 (defn time? [x]
   (try

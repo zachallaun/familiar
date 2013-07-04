@@ -1,3 +1,10 @@
+(ns familiar.time
+  (:require [clj-time
+               [core :refer :all :rename {extend elongate}] 
+               [coerce :refer :all] 
+               [format :refer :all] 
+               [local :refer :all]]))
+
 (defn later [a b]
   (apply > (map (comp to-long name) [a b])))
 (def inst-map (sorted-map-by later))

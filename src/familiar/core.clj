@@ -1,7 +1,20 @@
 (ns familiar.core
   ;(:gen-class)
    (:require [clojure.pprint :refer [pprint]]
-             [clojure.tools.namespace.repl :refer [refresh]]
+             [familiar
+              [dbconfig :refer :all]
+              [db :refer :all]
+              [time :refer :all]
+              [validator :refer :all]]
+             [korma
+              [core :refer :all]
+              [db :refer :all]]
+             [lobos
+              [connectivity :as lc]
+              [core :as l]
+              [schema :as ls]]
+             [clojure.java.jdbc :as jdb]
+             [clojure.java.jdbc.sql :as sql]
              [swiss-arrows.core :refer :all]
              [clj-time
                [core :refer :all :rename {extend elongate}] 
@@ -10,167 +23,83 @@
                [local :refer :all]]))
 
 ;; forward declarations required, just like in history class! cool!
-(declare str->key active-expt display-vars)
+(declare str->key active-expt display-vars active-expt active-expt-name)
 
-(defrecord Variable [name validator default instances unit time-res tags])
+(defrecord Variable [name validator default unit time-res tags])
 
-(load "time")
-(load "rangefns")
-(load "propfns")
+;;;;;;;;;;;;;;;
+;; Experiments
+;;
 
-(def example-experiment
-  "A silly little example."
-  (atom
-    {:ate-salmon (Variable/create
-                   {:name "ate-salmon"
-                    :validator 'boolean? 
-                    :default false
-                    :instances inst-map 
-                    :unit "boolean"
-                    :time-res :date
-                    :tags '(:food)})
-     :outside    (Variable/create
-                   {:name "outside"
-                    :validator '(num-interval 0 24) 
-                    :default 1 
-                    :unit "hours"
-                    :instances inst-map
-                    :time-res :date
-                    :tags '()})
-     :exercise   (Variable/create
-                   {:name "exercise"
-                    :validator #{0 1 2 3} 
-                    :default 0
-                    :unit "subjective strenuousness"
-                    :instances inst-map
-                    :time-res :date
-                    :tags '(:fitness)})
-     :mood       (Variable/create
-                   {:name "mood"
-                    :validator #{1 2 3 4 5}
-                    :default 2
-                    :unit "holistic mood rating"
-                    :instances inst-map
-                    :time-res :date
-                    :tags '()})}))
+(def db (atom (h2 {:db "data/derp.db"})))
 
-;;;;;;;;;;;;;;;;;;;;;;
-;~~~~ Experiments ~~~~
-
-(def active-expt example-experiment)
-
-(def active-expt-name (atom "data"))
-
-(defn save-expt 
-  "Saves an experiment to a file, defaulting to 
-     active experiment and its source file.
-     Keyword arguments:
-     :expt - name of experiment
-     :file - file to write to"
-  [& {:keys [expt file]
-        :or {expt active-expt
-             file @active-expt-name}}]
-  (spit file @active-expt))
-
-(defn make-expt
-  "Puts a blank experiment into a new file of given name."
+(defn open!
+  "Changes active experiment to that with the specified name"
   [file]
-  (assert (= (do (spit file "" :append true)
-                 (slurp file))
-             "")
-          "Experiment by that name already exists")
-  (spit file {}))
+  (reset! db (h2 {:db (str "data/" file ".db")}))
+  (defdb korma-db @db)
+  (create-tables @db))
 
-(defn load-expt
-  "Loads experiment from file, ensuring current 
-     experiment has been saved to its source."
-  [file]
-  (assert (= @active-expt (read-string (slurp @active-expt-name)))
-          "Data not yet saved!")
-  (reset! active-expt-name file)
-  (reset! active-expt
-          (read-string (slurp file))))
+(open! "derp")
 
-;;;;;;;;;;;;;;;;;;;;
-;~~~~ Variables ~~~~
+;;;;;;;;;;;;;
+;; Variables
+;;
 
-(defmacro add-var
+(defn tag-var
+  "Adds tags to variable"
+  [varname & tags]
+  (assert (seq (get-field :name variable varname))
+          (str "No variable by the name " varname "."))
+  (apply create-if-missing tag tags)
+  (for [name tags]
+    (insert variable_tag
+      (values {:tag_id      (get-field :id tag name)
+               :variable_id (get-field :id variable varname)}))))
+
+(defn add-var
   "Adds variable to experiment.
      Optional arguments:
-     :expt - name of a loaded experiment (defaults to active experiment)
-     :time-res - time resolution (defaults to :date, can be :date-time)
+     :expt - name of an experiment (defaults to loaded experiment)
+     :time-res - time resolution (defaults to date, can be date-time)
      :unit - a string representing the unit of measure
      :tags - a sequence of strings with which to tag the variable"
-  [variable validator default & opts]
-  `(add-variable- ~variable '~validator ~default ~@opts))
-
-(defn- add-variable-
-  [variable validator default
+  [name validator default
    & {:keys [expt time-res unit tags]
         :or {expt active-expt
-             time-res :date
+             time-res "date"
              unit ""
              tags '()}}]
-  (let [varkey (str->key variable)
-        tags (map str->key tags)]
-    (assert (nil? (varkey @expt)) "Variable already exists") 
-    (assert ((eval validator) default) "Default fails validator")
-    (swap! expt 
-           assoc   
-           varkey
-           (Variable. variable
-                      validator
-                      default
-                      inst-map
-                      unit
-                      (keyword time-res)
-                      tags))
-    (display-vars)))
-
-(defn change-field
-  "Destructively changes a field for a variable."
-  [variable field value & {:keys [expt]
-                             :or {expt active-expt}}]
-  (swap! expt
-         update-in
-         [(str->key variable) field]
-         (constantly value)))
-
-
-(defn tag-vars
-  "Adds tag to each var in collection in an experiment"
-  [tag vars & {:keys [expt]
-                 :or {expt active-expt}}]
-  (doall (for [v vars]
-    (swap! expt 
-           update-in 
-           [(str->key v) :tags]
-           #(conj % (str->key tag)))))
-  (display-vars))
+  #_(assert ((validator-fn valname) default)
+          "Given default fails validator.")
+  (insert variable
+    (values {:name name
+             :default default
+             :unit unit
+             :time-res time-res
+             :validator validator}))
+  (apply tag-var name tags))
 
 (defn display-vars
   "Displays info for variables in active experiment" 
   [& {:keys [expt]
         :or {expt active-expt}}]
-  (let [keyfilter #(select-keys % [:default :validator :tags :unit :name])]
-    (pprint (map keyfilter (vals @expt)))))
+  )
 
-;;;;;;;;;;;;;;;
-;~~~~ Data ~~~~
+;;;;;;;;
+;; Data
+;;
 
 (defn add-datum
+  ;validate
   "Adds a single instance of variable."
   [varname value & {:keys [expt instant]
                       :or {expt active-expt
                            instant @active-time}}]
-  (let [variable ((str->key varname) @expt)
-        instant (chop-time instant (:time-res variable))]
-    (assert ((eval (:validator variable)) value)
-            "Value fails validator")
-    (swap! expt 
-           update-in 
-           [(str->key varname) :instances] 
-           #(assoc % (keyword instant) value))))
+  (insert instance
+    (values {:time instant
+             :value value
+             :variable_id (get-field :id variable varname)})))
 
 (defn add-data 
   "Adds instances of variables with values.
@@ -179,12 +108,7 @@
   [coll & {:keys [expt instant]
              :or {expt active-expt
                   instant @active-time}}]
-  (assert (even? (count coll))
-          "Mismatched number of variables and values. Double check call")
-  (doall (map (partial apply add-datum)
-              (map #(conj (vec %) :expt expt :instant instant)
-                    (partition 2 coll))))
-  (display-vars))
+  )
 
 (defn missing-today
   "Displays all variables with no instance for the
@@ -192,10 +116,7 @@
   [& {:keys [expt instant]
         :or {expt active-expt
              instant @active-time}}]
-  (->> (vals @expt)
-       (filter #(nil? ((:instances %) (chop-time instant (:time-res %)))))
-       (map :name)
-       pprint))
+  )
 
 (defn entered-today
   "Displays values for variables with an instance within
@@ -203,33 +124,32 @@
   [& {:keys [expt instant]
         :or {expt active-expt
              instant @active-time}}]
-  (->> (vals @expt)
-       (remove #(nil? ((:instances %) (chop-time instant (:time-res %)))))
-       (map #(vector (:name %)
-                     ((chop-time instant (:time-res %)) (:instances %))))
-       pprint))
+  )
 
 (defn let-default 
   "Allows collection of variables to take on their default values"
   [variables & {:keys [expt instant]
                   :or {expt active-expt
                        instant @active-time}}]
-  (-<>> (vals @expt)
-        (filter #((set variables) (:name %)))
-        (map :default)
-        (interleave variables)
-        (add-data <> :expt expt :instant instant)))
+  )
 
 (defn change-day 
   "Sets active time n days ahead or behind."
   [n]
-  (swap! active-time
-         #(-> (parse-time %)
-              (plus (days n))
-              unparse-time)))
+  )
 
-;;;;;;;;;;;;;;;;;;
-;~~~~ Helpers ~~~~
+;;;;;;;;;;;;;;
+;; Predicates
+;;
+
+
+
+
+
+
+;;;;;;;;;;;
+;; Helpers
+;;
 
 (defn help []
   (->> (for [[n v] (ns-publics 'familiar.core)]
