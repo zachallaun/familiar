@@ -101,7 +101,6 @@
 ;;
 
 (defn add-datum
-  ;validate
   "Adds a single instance of variable."
   [varname value & {:keys [expt instant]
                       :or {expt active-expt
