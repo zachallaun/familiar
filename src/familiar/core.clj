@@ -106,6 +106,8 @@
   [varname value & {:keys [expt instant]
                       :or {expt active-expt
                            instant @active-time}}]
+  (assert (validate varname value)
+          (str value " is invalid for " varname))
   (insert instance
     (values {:time instant
              :value value
