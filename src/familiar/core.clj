@@ -119,7 +119,10 @@
   [coll & {:keys [expt instant]
              :or {expt active-expt
                   instant @active-time}}]
-  )
+  (doall
+    (->> (partition 2 coll)
+         (map #(concat % [:expt expt :instant instant]))
+         (map #(apply add-datum %)))))
 
 (defn missing-today
   "Displays all variables with no instance for the
@@ -147,7 +150,10 @@
 (defn change-day 
   "Sets active time n days ahead or behind."
   [n]
-  )
+  (swap! active-time
+         #(-> (parse-time %)
+              (plus (days n))
+              unparse-time)))
 
 ;;;;;;;;;;;;;;
 ;; Predicates
