@@ -150,7 +150,10 @@
 (defn change-day 
   "Sets active time n days ahead or behind."
   [n]
-  )
+  (swap! active-time
+         #(-> (parse-time %)
+              (plus (days n))
+              unparse-time)))
 
 ;;;;;;;;;;;;;;
 ;; Predicates
