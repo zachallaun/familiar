@@ -82,9 +82,13 @@
 
 (defn display-vars
   "Displays info for variables in active experiment" 
-  [& {:keys [expt]
-        :or {expt active-expt}}]
-  )
+  []
+  (->> (select variable (with tag))
+       (map (comp
+              #(select-keys % [:default :validator :unit :tag :name])
+              (fn [t]
+                (update-in t [:tag] #(map :name %)))))
+       pprint))
 
 (defn validate [varname value]
   (let [validator (-> (get-field :validator variable varname)
