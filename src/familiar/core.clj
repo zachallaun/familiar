@@ -70,7 +70,7 @@
              time-res "date"
              unit ""
              tags '()}}]
-  #_(assert ((validator-fn valname) default)
+  (assert ((eval (read-string validator)) default)
           "Given default fails validator.")
   (insert variable
     (values {:name name
@@ -85,6 +85,12 @@
   [& {:keys [expt]
         :or {expt active-expt}}]
   )
+
+(defn validate [varname value]
+  (let [validator (-> (get-field :validator variable varname)
+                      read-string
+                      eval)]
+    (validator value)))
 
 ;;;;;;;;
 ;; Data
