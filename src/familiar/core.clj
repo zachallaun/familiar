@@ -101,7 +101,6 @@
 ;;
 
 (defn add-datum
-  ;validate
   "Adds a single instance of variable."
   [varname value & {:keys [expt instant]
                       :or {expt active-expt
@@ -120,7 +119,10 @@
   [coll & {:keys [expt instant]
              :or {expt active-expt
                   instant @active-time}}]
-  )
+  (doall
+    (->> (partition 2 coll)
+         (map #(concat % [:expt expt :instant instant]))
+         (map #(apply add-datum %)))))
 
 (defn missing-today
   "Displays all variables with no instance for the
