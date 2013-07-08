@@ -111,6 +111,8 @@
   (let [timeslice (slice instant varname)]
     (assert (validate varname value)
             (str value " is invalid for " varname))
+    (assert (no-concurrent-instance? timeslice varname)
+            (str varname " already has value at " timeslice))
     (insert instance
       (values {:time timeslice
                :value value
@@ -123,10 +125,13 @@
   [coll & {:keys [expt instant]
              :or {expt active-expt
                   instant @active-time}}]
-  (doall
-    (->> (partition 2 coll)
-         (map #(concat % [:expt expt :instant instant]))
-         (map #(apply add-datum %)))))
+  (transaction
+    (try (doall
+      (->> (partition 2 coll)
+           (map #(concat % [:expt expt :instant instant]))
+           (map #(apply add-datum %))))
+         (catch Throwable e (println (.getMessage e))
+                            (rollback)))))
 
 (defn missing-today
   "Displays all variables with no instance for the
