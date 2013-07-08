@@ -63,7 +63,7 @@
                  (varchar :name 100 :unique)))
     (create (tbl :instance
                  (varchar :time 100)
-                 (index :time_unique [:time] :unique)
+                 (index :time_unique [:time :variable_id] :unique)
                  (varchar :value 100)
                  (refer-to :variable)))
     (create (tbl :tag
