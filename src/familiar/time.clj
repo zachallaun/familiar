@@ -3,7 +3,10 @@
                [core :refer :all :rename {extend elongate}] 
                [coerce :refer :all] 
                [format :refer :all] 
-               [local :refer :all]]))
+               [local :refer :all]]
+            [familiar
+               [db :refer :all]
+               [dbconfig :refer :all]]))
 
 (defn later [a b]
   (apply > (map (comp to-long name) [a b])))
@@ -16,7 +19,7 @@
   (unparse-time (local-now)))
 (def active-time (atom (present)))
 
-(defn chop-time [instant form]
-  (->> (parse-time (name instant))
-       (unparse (formatters form))
-       keyword))
+(defn slice [instant varname]
+  (let [time-res (keyword (get-field :time-res variable varname))]
+    (->> (parse-time instant)
+         (unparse (formatters time-res)))))

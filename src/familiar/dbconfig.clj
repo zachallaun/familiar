@@ -63,6 +63,7 @@
                  (varchar :name 100 :unique)))
     (create (tbl :instance
                  (varchar :time 100)
+                 (index :time_unique [:time] :unique)
                  (varchar :value 100)
                  (refer-to :variable)))
     (create (tbl :tag
@@ -71,5 +72,5 @@
                  (refer-cascade :variable)
                  (refer-cascade :tag)))
     (println "Creating database")
-    (catch Exception e (println "Database exists. Welcome back"))))
+    (catch Exception e (println (.getMessage e)))))
 

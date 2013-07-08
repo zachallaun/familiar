@@ -108,12 +108,13 @@
   [varname value & {:keys [expt instant]
                       :or {expt active-expt
                            instant @active-time}}]
-  (assert (validate varname value)
-          (str value " is invalid for " varname))
-  (insert instance
-    (values {:time instant
-             :value value
-             :variable_id (get-field :id variable varname)})))
+  (let [timeslice (slice instant varname)]
+    (assert (validate varname value)
+            (str value " is invalid for " varname))
+    (insert instance
+      (values {:time timeslice
+               :value value
+               :variable_id (get-field :id variable varname)}))))
 
 (defn add-data 
   "Adds instances of variables with values.
