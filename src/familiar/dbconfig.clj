@@ -52,7 +52,7 @@
   (try
     (close-global)
     (println "Closed open experiment")
-    (catch Exception e (println "No open experiment")))
+    (catch Exception e (.getMessage e)))
   (open-global db)
   (try
     (create (tbl :variable

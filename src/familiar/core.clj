@@ -32,13 +32,16 @@
 ;;
 
 (def db (atom (h2 {:db "data/default/default.db"})))
+(def korma-db (atom (create-db @db)))
 
 (defn open!
   "Changes active experiment to that with the specified name"
   [file]
   (reset! db (h2 {:db (str "data/" file  "/" file ".db")}))
-  (defdb korma-db @db)
-  (create-tables @db))
+  (reset! korma-db (create-db @db))
+  (default-connection @korma-db)
+  (create-tables @db)
+  (println "whoo."))
 
 (open! "default")
 
