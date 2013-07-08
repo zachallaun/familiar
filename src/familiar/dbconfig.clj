@@ -9,6 +9,18 @@
                                 has-one has-many many-to-many
                                 belongs-to]]))
 
+(def bit-bucket-writer
+  (proxy [java.io.Writer] []
+    (write [buf] nil)
+    (close []    nil)
+    (flush []    nil)))
+ 
+(defmacro noprint
+  "Evaluates the given expressions with all printing to *out* silenced."
+  [& forms]
+    `(binding [*out* bit-bucket-writer]
+       ~@forms))
+
 (declare variable tag instance variable_tag)
 
 (defentity variable
@@ -44,17 +56,17 @@
     (integer table cname [:refer ptable :id :on-delete :cascade])))
 
 (defmacro tbl [name & elements]
-    `(-> (table ~name)
-                ~@(reverse elements)
-                (surrogate-key)))
+  `(-> (table ~name)
+       ~@(reverse elements)
+       (surrogate-key)))
 
 (defn create-tables [db]
   (try
     (close-global)
     (println "Closed open experiment")
-    (catch Exception e (.getMessage e)))
+    (catch Throwable e (.getMessage e)))
   (open-global db)
-  (try
+  (try (noprint
     (create (tbl :variable
                  (varchar :time-res 100)
                  (varchar :validator 100)
@@ -70,7 +82,5 @@
                  (varchar :name 100)))
     (create (tbl :variable_tag
                  (refer-cascade :variable)
-                 (refer-cascade :tag)))
-    (println "Creating database")
-    (catch Exception e (println (.getMessage e)))))
-
+                 (refer-cascade :tag))))
+    (catch Throwable e (println "Database found. Hooray."))))

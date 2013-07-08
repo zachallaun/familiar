@@ -22,10 +22,7 @@
                [format :refer :all] 
                [local :refer :all]]))
 
-;; forward declarations required, just like in history class! cool!
 (declare str->key active-expt display-vars active-expt active-expt-name)
-
-(defrecord Variable [name validator default unit time-res tags])
 
 ;;;;;;;;;;;;;;;
 ;; Experiments
@@ -40,8 +37,7 @@
   (reset! db (h2 {:db (str "data/" file  "/" file ".db")}))
   (reset! korma-db (create-db @db))
   (default-connection @korma-db)
-  (create-tables @db)
-  (println "whoo."))
+  (create-tables @db))
 
 (open! "default")
 
@@ -181,7 +177,7 @@
 
 (defn help []
   (->> (for [[n v] (ns-publics 'familiar.core)]
-         [(str "- " n) "\n    " (:doc (meta v))])
+         [(str "+ " n) "\n    " (:doc (meta v))])
        (remove #(nil? (nth % 2)))
        (interpose "\n")
        flatten
