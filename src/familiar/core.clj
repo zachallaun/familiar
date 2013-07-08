@@ -22,7 +22,7 @@
                [format :refer :all] 
                [local :refer :all]]))
 
-(declare str->key active-expt display-vars active-expt active-expt-name)
+(declare str->key with-str-args active-expt display-vars active-expt active-expt-name)
 
 ;;;;;;;;;;;;;;;
 ;; Experiments
@@ -56,20 +56,14 @@
       (values {:tag_id      (get-field :id tag name)
                :variable_id (get-field :id variable varname)}))))
 
-(defn add-var
-  "Adds variable to experiment.
-     Optional arguments:
-     :expt - name of an experiment (defaults to loaded experiment)
-     :time-res - time resolution (defaults to date, can be date-time)
-     :unit - a string representing the unit of measure
-     :tags - a sequence of strings with which to tag the variable"
-  [name validator default
+(defn- new-var-
+  [[name validator default]
    & {:keys [expt time-res unit tags]
         :or {expt active-expt
              time-res "date"
              unit ""
              tags '()}}]
-  (assert ((eval (read-string validator)) default)
+  (assert ((eval (read-string validator)) (read-string default))
           "Given default fails validator.")
   (insert variable
     (values {:name name
@@ -79,7 +73,16 @@
              :validator validator}))
   (apply tag-var name tags))
 
-(defn display-vars
+(defmacro new-var [& exprs]
+  "Adds variable to experiment.
+     Optional arguments:
+     :expt - name of an experiment (defaults to loaded experiment)
+     :time-res - time resolution (defaults to date, can be date-time)
+     :unit - a string representing the unit of measure
+     :tags - a sequence of strings with which to tag the variable"
+  `(with-str-args new-var- ~exprs))
+
+(defn display
   "Displays info for variables in active experiment" 
   []
   (->> (select variable (with tag))
@@ -89,7 +92,7 @@
                 (update-in t [:tag] #(map :name %)))))
        pprint))
 
-(defn validate [varname value]
+(defn- validate [varname value]
   (let [validator (-> (get-field :validator variable varname)
                       read-string
                       eval)]
@@ -99,12 +102,12 @@
 ;; Data
 ;;
 
-(defn add-datum
+(defn datum
   "Adds a single instance of variable."
   [varname value & {:keys [expt instant]
                       :or {expt active-expt, instant @active-time}}]
   (let [timeslice (slice instant varname)]
-    (assert (validate varname value)
+    (assert (validate varname (read-string value))
             (str value " is invalid for " varname))
     (assert (no-concurrent-instance? timeslice varname)
             (str varname " already has value at " timeslice))
@@ -113,21 +116,24 @@
                :value value
                :variable_id (get-field :id variable varname)}))))
 
-(defn add-data 
-  "Adds instances of variables with values.
-     Example:
-     (add-data [\"mice\" 6 \"cats\" 2 \"dogs\" 0])"
+(defn- data-
   [coll & {:keys [expt instant]
              :or {expt active-expt, instant @active-time}}]
   (transaction
     (try (doall
       (->> (partition 2 coll)
            (map #(concat % [:expt expt :instant instant]))
-           (map #(apply add-datum %))))
-         (catch Throwable e (println (.getMessage e))
-                            (rollback)))))
+           (map #(apply datum %))))
+      (catch Throwable e (println (.getMessage e))
+                         (rollback)))))
 
-(defn missing-today
+(defmacro data [& exprs]
+  "Adds instances of variables with values.
+     Example:
+     (add-data mice 6 cats 2 dogs 0)"
+  `(with-str-args data- ~exprs))
+
+(defn missing
   "Displays all variables with no instance for the
      time pixel matching the active time/given time."
   [& {:keys [expt instant]
@@ -135,15 +141,15 @@
   (->> (map :name (select variable (fields :name)))
        (filter #(no-concurrent-instance? (slice instant %) %))))
 
-(defn entered-today
+(defn entered
   "Displays values for variables with an instance within
      the time pixel matching the active time/given time."
   [& {:keys [expt instant]
         :or {expt active-expt, instant @active-time}}]
-  (remove (set (missing-today :expt expt :instant instant)) 
+  (remove (set (missing :expt expt :instant instant))
           (map :name (select variable (fields :name)))))
 
-(defn let-default 
+(defn defaults
   "Allows collection of variables to take on their default values"
   [variables & {:keys [expt instant]
                   :or {expt active-expt, instant @active-time}}]
@@ -152,7 +158,7 @@
           (where {:name [in variables]}))
         (map (comp read-string :default))
         (interleave variables)
-        (add-data <> :expt expt :instant instant)))
+        (data- <> :expt expt :instant instant)))
 
 (defn change-day 
   "Sets active time n days ahead or behind."
@@ -189,6 +195,13 @@
        (apply str) 
        .toLowerCase
        keyword))
+
+(defmacro with-str-args [f exprs]
+  (let [[args opts] (split-with (complement keyword?)
+                                exprs)
+        args (map str args)
+        opts (map #(if (keyword? %) % (str %)) opts)]
+    `(~f '~args ~@opts)))
 
 #_(defn -main
   [& args]
