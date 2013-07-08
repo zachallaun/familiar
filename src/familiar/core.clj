@@ -45,8 +45,7 @@
 ;; Variables
 ;;
 
-(defn tag-var
-  "Adds tags to variable"
+(defn- tag-var-
   [varname & tags]
   (assert (seq (get-field :name variable varname))
           (str "No variable by the name " varname "."))
@@ -55,6 +54,11 @@
     (insert variable_tag
       (values {:tag_id      (get-field :id tag name)
                :variable_id (get-field :id variable varname)}))))
+
+(defmacro tag-var
+  "Adds tags to variable"
+  [& args]
+  `(tag-var- ~@(map str args)))
 
 (defn- new-var-
   [[name validator default]
@@ -71,19 +75,21 @@
              :unit unit
              :time-res time-res
              :validator validator}))
-  (apply tag-var name tags))
+  (apply tag-var- name tags))
 
-(defmacro new-var [& exprs]
+(defmacro new-var
   "Adds variable to experiment.
+     Example: (new-var robot boolean? false)
      Optional arguments:
      :expt - name of an experiment (defaults to loaded experiment)
      :time-res - time resolution (defaults to date, can be date-time)
      :unit - a string representing the unit of measure
      :tags - a sequence of strings with which to tag the variable"
+  [& exprs]
   `(with-str-args new-var- ~exprs))
 
 (defn display
-  "Displays info for variables in active experiment" 
+  "Displays info for variables in active experiment."
   []
   (->> (select variable (with tag))
        (map (comp
@@ -127,10 +133,11 @@
       (catch Throwable e (println (.getMessage e))
                          (rollback)))))
 
-(defmacro data [& exprs]
+(defmacro data
   "Adds instances of variables with values.
      Example:
      (add-data mice 6 cats 2 dogs 0)"
+  [& exprs]
   `(with-str-args data- ~exprs))
 
 (defn missing
@@ -149,16 +156,21 @@
   (remove (set (missing :expt expt :instant instant))
           (map :name (select variable (fields :name)))))
 
-(defn defaults
-  "Allows collection of variables to take on their default values"
+(defn- defaults-
   [variables & {:keys [expt instant]
                   :or {expt active-expt, instant @active-time}}]
   (-<>> (select variable
           (fields :name :default)
-          (where {:name [in variables]}))
-        (map (comp read-string :default))
-        (interleave variables)
+          (where {:name [in variables]})
+          (order :name))
+        (map :default)
+        (interleave (sort variables))
         (data- <> :expt expt :instant instant)))
+
+(defmacro defaults
+  "Allows given variables to take on their default values"
+  [& exprs]
+  `(with-str-args defaults- ~exprs))
 
 (defn change-day 
   "Sets active time n days ahead or behind."
@@ -181,8 +193,10 @@
 ;; Helpers
 ;;
 
-(defn help []
-  (->> (for [[n v] (ns-publics 'familiar.core)]
+(defn help
+  "Informs you what's what."
+  []
+  (->> (for [[n v] (ns-interns 'familiar.core)]
          [(str "+ " n) "\n    " (:doc (meta v))])
        (remove #(nil? (nth % 2)))
        (interpose "\n")
