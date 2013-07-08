@@ -23,5 +23,5 @@
 (defn no-concurrent-instance? [time varname]
   (empty? (select instance
             (where {:variable_id (get-field :id variable varname)
-                   :time time}))))
+                    :time time}))))
 

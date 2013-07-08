@@ -106,8 +106,7 @@
 (defn add-datum
   "Adds a single instance of variable."
   [varname value & {:keys [expt instant]
-                      :or {expt active-expt
-                           instant @active-time}}]
+                      :or {expt active-expt, instant @active-time}}]
   (let [timeslice (slice instant varname)]
     (assert (validate varname value)
             (str value " is invalid for " varname))
@@ -123,8 +122,7 @@
      Example:
      (add-data [\"mice\" 6 \"cats\" 2 \"dogs\" 0])"
   [coll & {:keys [expt instant]
-             :or {expt active-expt
-                  instant @active-time}}]
+             :or {expt active-expt, instant @active-time}}]
   (transaction
     (try (doall
       (->> (partition 2 coll)
@@ -137,24 +135,28 @@
   "Displays all variables with no instance for the
      time pixel matching the active time/given time."
   [& {:keys [expt instant]
-        :or {expt active-expt
-             instant @active-time}}]
-  )
+        :or {expt active-expt, instant @active-time}}]
+  (->> (map :name (select variable (fields :name)))
+       (filter #(no-concurrent-instance? (slice instant %) %))))
 
 (defn entered-today
   "Displays values for variables with an instance within
      the time pixel matching the active time/given time."
   [& {:keys [expt instant]
-        :or {expt active-expt
-             instant @active-time}}]
-  )
+        :or {expt active-expt, instant @active-time}}]
+  (remove (set (missing-today :expt expt :instant instant)) 
+          (map :name (select variable (fields :name)))))
 
 (defn let-default 
   "Allows collection of variables to take on their default values"
   [variables & {:keys [expt instant]
-                  :or {expt active-expt
-                       instant @active-time}}]
-  )
+                  :or {expt active-expt, instant @active-time}}]
+  (-<>> (select variable
+          (fields :name :default)
+          (where {:name [in variables]}))
+        (map (comp read-string :default))
+        (interleave variables)
+        (add-data <> :expt expt :instant instant)))
 
 (defn change-day 
   "Sets active time n days ahead or behind."
