@@ -75,7 +75,7 @@
              :unit unit
              :time-res time-res
              :validator validator}))
-  (apply tag-var- name tags))
+  (apply tag-var- name (read-string tags)))
 
 (defmacro new-var
   "Adds variable to experiment.
@@ -89,14 +89,18 @@
   `(with-str-args new-var- ~exprs))
 
 (defn display
-  "Displays info for variables in active experiment."
-  []
-  (->> (select variable (with tag))
-       (map (comp
-              #(select-keys % [:default :validator :unit :tag :name])
-              (fn [t]
-                (update-in t [:tag] #(map :name %)))))
-       pprint))
+  "Displays info for variables in active experiment that match tags, or all
+     with no arguments."
+  [& tags]
+  (let [tags (if (seq tags)
+               (partial some (set tags))
+               (constantly true))]
+    (->> (select variable (with tag))
+         (map (fn [t] (update-in t [:tag]
+                                 #(map :name %))))
+         (filter #(tags (:tag %)))
+         (map #(select-keys % [:default :validator :unit :tag :name]))
+         pprint)))
 
 (defn- validate [varname value]
   (let [validator (-> (get-field :validator variable varname)
