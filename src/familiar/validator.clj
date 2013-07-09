@@ -14,6 +14,9 @@
           (and (nil? e) (>= x b))
           (<= b x e)))))
 
+(def non-negative?
+  (complement neg?))
+
 (defn time? [x]
   (try
     (if (parse (formatters :time) x) true)
