@@ -1,18 +1,20 @@
 (ns familiar.core
   ;(:gen-class)
-   (:require [clojure.pprint :refer [pprint]]
-             [familiar
-              [dbconfig :refer :all]
-              [db :refer :all]
-              [time :refer :all]
-              [validator :refer :all]]
+   (:require [familiar
+               [dbconfig :refer :all]
+               [db :refer :all]
+               [time :refer :all]
+               [validator :refer :all]
+               #_[predicate :refer :all]
+               #_[graph :refer :all]]
              [korma
-              [core :refer :all]
-              [db :refer :all]]
+               [core :refer :all]
+               [db :refer :all]]
              [lobos
-              [connectivity :as lc]
-              [core :as l]
-              [schema :as ls]]
+               [connectivity :as lc]
+               [core :as l]
+               [schema :as ls]]
+             [clojure.pprint :refer [pprint]]
              [clojure.java.jdbc :as jdb]
              [clojure.java.jdbc.sql :as sql]
              [swiss-arrows.core :refer :all]
@@ -22,7 +24,7 @@
                [format :refer :all] 
                [local :refer :all]]))
 
-(declare str->key with-str-args active-expt display-vars active-expt active-expt-name)
+(declare str->key with-str-args display-vars active-expt active-expt-name)
 
 ;;;;;;;;;;;;;;;
 ;; Experiments

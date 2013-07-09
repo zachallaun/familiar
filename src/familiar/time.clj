@@ -8,10 +8,6 @@
                [db :refer :all]
                [dbconfig :refer :all]]))
 
-(defn later [a b]
-  (apply > (map (comp to-long name) [a b])))
-(def inst-map (sorted-map-by later))
-
 (def time-form    (formatters :date-time))
 (def unparse-time (partial unparse time-form))
 (def parse-time   (partial parse time-form))
