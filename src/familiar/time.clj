@@ -1,6 +1,6 @@
 (ns familiar.time
   (:require [clj-time
-               [core :refer :all :rename {extend elongate}] 
+               [core :refer :all :rename {extend elongate}]
                [coerce :refer :all] 
                [format :refer :all] 
                [local :refer :all]]

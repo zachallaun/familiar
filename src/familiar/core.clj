@@ -19,9 +19,9 @@
              [clojure.java.jdbc.sql :as sql]
              [swiss-arrows.core :refer :all]
              [clj-time
-               [core :refer :all :rename {extend elongate}] 
-               [coerce :refer :all] 
-               [format :refer :all] 
+               [core :refer :all :rename {extend elongate}]
+               [coerce :refer :all]
+               [format :refer :all]
                [local :refer :all]]))
 
 (declare str->key with-str-args display-vars active-expt active-expt-name)
