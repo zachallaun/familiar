@@ -144,6 +144,29 @@
   [& exprs]
   `(with-str-args data- ~exprs))
 
+(defn- erase-
+  [coll & {:keys [expt instant]
+             :or {expt active-expt, instant @active-time}}]
+  (let [slices 
+         (map (comp (partial slice instant) :name)
+              (select variable 
+                (fields :name) 
+                (where {:name [in coll]})))
+        ids 
+        (select variable
+          (fields :id)
+          (where {:name [in coll]}))]
+    (transaction
+      (delete instance 
+        (fields :time :variable_id)
+        (where {:time [in (set slices)]
+                :variable_id [in ids]})))))
+
+(defmacro erase
+  "Erases data for given variables at active time/given time."
+  [& exprs]
+  `(with-str-args erase- ~exprs))
+
 (defn missing
   "Displays all variables with no instance for the
      time pixel matching the active time/given time."
