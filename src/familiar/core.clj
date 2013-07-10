@@ -90,12 +90,10 @@
   [& exprs]
   `(with-str-args new-var- ~exprs))
 
-(defn display
-  "Displays info for variables in active experiment that match tags, or all
-     with no arguments."
-  [& tags]
+(defn- display-
+  [tags]
   (let [tags (if (seq tags)
-               (partial some (set tags))
+               (partial some (set (map str tags)))
                (constantly true))]
     (->> (select variable (with tag))
          (map (fn [t] (update-in t [:tag]
@@ -103,6 +101,12 @@
          (filter #(tags (:tag %)))
          (map #(select-keys % [:default :validator :unit :tag :name]))
          pprint)))
+
+(defmacro display
+  "Displays info for variables in active experiment that match tags, or all
+     variables if no arguments."
+  [& tags]
+  (display- (map str tags)))
 
 (defn- validate [varname value]
   (let [validator (-> (get-field :validator variable varname)
