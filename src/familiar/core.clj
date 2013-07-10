@@ -3,10 +3,8 @@
    (:require [familiar
                [dbconfig :refer :all]
                [db :refer :all]
-               [time :refer :all]
                [validator :refer :all]
-               #_[predicate :refer :all]
-               #_[graph :refer :all]]
+               [graph :refer :all]]
              [korma
                [core :refer :all]
                [db :refer :all]]
