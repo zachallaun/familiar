@@ -18,6 +18,9 @@
   (unparse-time (local-now)))
 (def active-time (atom (present)))
 
+(def precision-table
+  {:date (days 1)})
+
 (defn get-field [field table name]
   (-> (select table
         (fields :name field)
@@ -30,16 +33,23 @@
     (->> (parse-time instant)
          (unparse (formatters time-res)))))
 
-(defn range-instants [varname begin delta-t duration]
-  (let [begin    (parse-time begin)
-        time-res (keyword (get-field :time-res variable varname))
-        final    (plus begin duration)
-        slices   (take-while (partial within? begin final)
-                             (iterate #(plus % delta-t)
-                                      begin))]
-    (set
-      (map (partial unparse (formatters time-res))
-           slices))))
+
+(defn range-instants [begin delta-t duration]
+  (let [begin (parse-time begin)
+        final (plus begin duration)]
+    (take-while (partial within? begin final)
+                (iterate #(plus % delta-t)
+                         begin))))
+
+(defn range-values [varname begin duration]
+  (let [time-res (keyword (get-field :time-res variable varname))
+        times
+        (->> (range-instants begin (precision-table time-res) duration)
+             (map (partial unparse (formatters time-res))))]
+    (select instance
+      (fields :time :value)
+      (where {:variable_id (get-field :id variable varname)
+              :time        [in times]}))))
 
 (defn create-if-missing [this & names]
  (doall

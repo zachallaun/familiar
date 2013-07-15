@@ -7,6 +7,7 @@
                  [org.clojure/tools.nrepl "0.2.3"]
                  [org.clojure/tools.namespace "0.2.3"]
                  [org.clojure/java.jdbc "0.3.0-alpha4"]
+                 [org.clojure/math.combinatorics "0.0.4"]
                  [korma "0.3.0-RC5"]
                  [log4j "1.2.15" :exclusions [javax.mail/mail
                                               javax.jms/jms

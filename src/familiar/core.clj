@@ -77,6 +77,8 @@
                                          tags "()"}}]
   (assert ((eval (read-string validator)) (read-string default))
           "Given default fails validator.")
+  (assert (not (nil? (read-string default)))
+          "nil default is reserved for predicates. Deal with it.")
   (insert variable
     (values {:name varname
              :default default
@@ -105,7 +107,7 @@
                                         tags "()"}}]
   (insert variable
     (values {:name predname
-             :default "nil" ;FIXME calc pred?
+             :default "nil"
              :unit unit
              :time-res time-res
              :fn function
@@ -119,14 +121,16 @@
                (fn [t] (>= (value productivity t) 3))
                productivity)"
   [predname function & depend]
-    (new-pred- [(str predname) (str function) (str (vec (map str depend)))] ,, ))
+    (new-pred- [(str predname) (str function) (str (vec (map str depend)))]))
 
 (defn- display-
   [tags]
   (let [tags (if (seq tags)
                (partial some (set (map str tags)))
                (constantly true))]
-    (->> (select variable (with tag))
+    (->> (select variable
+           (with tag)
+           (where {:default [not= "nil"]}))
          (map (fn [t] (update-in t [:tag]
                                  #(map :name %))))
          (filter #(tags (:tag %)))
@@ -154,6 +158,8 @@
   [varname value & {:keys [expt instant]
                       :or {expt active-expt, instant @active-time}}]
   (let [timeslice (slice instant varname)]
+    (assert (not (nil? (get-field :default variable varname)))
+            "Cannot add data for predicates")
     (assert (validate varname (read-string value))
             (str value " is invalid for " varname))
     (assert (no-concurrent-instance? timeslice varname)
@@ -185,14 +191,15 @@
   [coll & {:keys [expt instant]
              :or {expt active-expt, instant @active-time}}]
   (let [slices 
-         (map (comp (partial slice instant) :name)
-              (select variable 
-                (fields :name) 
-                (where {:name [in coll]})))
+        (map (comp (partial slice instant) :name)
+             (select variable 
+               (fields :name) 
+               (where {:name [in coll]})))
         ids 
-        (select variable
-          (fields :id)
-          (where {:name [in coll]}))]
+        (map :id
+             (select variable
+               (fields :id)
+               (where {:name [in coll]})))]
     (transaction
       (delete instance 
         (fields :time :variable_id)
@@ -209,7 +216,9 @@
      time pixel matching the active time/given time."
   [& {:keys [expt instant]
         :or {expt active-expt, instant @active-time}}]
-  (->> (map :name (select variable (fields :name)))
+  (->> (map :name (select variable
+                    (fields :name)
+                    (where {:default [not= "nil"]})))
        (filter #(no-concurrent-instance? (slice instant %) %))))
 
 (defn entered
@@ -225,7 +234,8 @@
                   :or {expt active-expt, instant @active-time}}]
   (-<>> (select variable
           (fields :name :default)
-          (where {:name [in variables]})
+          (where {:name [in variables]
+                  :default [not= "nil"]})
           (order :name))
         (map :default)
         (interleave (sort variables))
@@ -251,14 +261,12 @@
   [varname func delta-t duration 
    & {:keys [expt instant]
         :or {expt active-expt, instant @active-time}}]
-  (let [instants (range-instants varname instant delta-t duration)
+  (let [instants (range-instants instant delta-t duration)
         time-res (keyword (get-field :time-res variable varname))]
     (doall
-      (map #(->> (parse (formatters time-res) %)
-                 unparse-time
+      (map #(->> (unparse-time  %)
                  (datum varname (func) :instant))
            instants))))
-
 
 ;;;;;;;;;;;
 ;; Helpers
