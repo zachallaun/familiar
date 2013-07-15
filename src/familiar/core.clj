@@ -12,7 +12,9 @@
                [connectivity :as lc]
                [core :as l]
                [schema :as ls]]
-             [clojure.pprint :refer [pprint]]
+             [clojure 
+               [walk :as walk]
+               [pprint :refer [pprint]]]
              [clojure.java.jdbc :as jdb]
              [clojure.java.jdbc.sql :as sql]
              [swiss-arrows.core :refer :all]
@@ -20,7 +22,14 @@
                [core :refer :all :rename {extend elongate}]
                [coerce :refer :all]
                [format :refer :all]
-               [local :refer :all]]))
+               [local :refer :all]]
+             [loom
+               [graph :refer :all]
+               [alg :refer :all]
+               [gen :refer :all]
+               [attr :refer :all]
+               [label :refer :all]
+               [io :refer :all]]))
 
 (declare str->key with-str-args display-vars active-expt active-expt-name)
 
@@ -235,13 +244,20 @@
               (plus (days n))
               unparse-time)))
 
-;;;;;;;;;;;;;;
-;; Predicates
-;;
-
-
-
-
+(defn datagen 
+  "Generates fake data for every delta-t in a variable from instant 
+     to (plus instant duration) according to func. Remember that every
+     value func could return should be a string."
+  [varname func delta-t duration 
+   & {:keys [expt instant]
+        :or {expt active-expt, instant @active-time}}]
+  (let [instants (range-instants varname instant delta-t duration)
+        time-res (keyword (get-field :time-res variable varname))]
+    (doall
+      (map #(->> (parse (formatters time-res) %)
+                 unparse-time
+                 (datum varname (func) :instant))
+           instants))))
 
 
 ;;;;;;;;;;;

@@ -30,6 +30,16 @@
     (->> (parse-time instant)
          (unparse (formatters time-res)))))
 
+(defn range-instants [varname begin delta-t duration]
+  (let [begin    (parse-time begin)
+        time-res (keyword (get-field :time-res variable varname))
+        final    (plus begin duration)
+        slices   (take-while (partial within? begin final)
+                             (iterate #(plus % delta-t)
+                                      begin))]
+    (set
+      (map (partial unparse (formatters time-res))
+           slices))))
 
 (defn create-if-missing [this & names]
  (doall

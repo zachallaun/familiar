@@ -17,6 +17,5 @@
                  [com.h2database/h2 "1.3.170"]
                  [swiss-arrows "0.6.0"]
                  [clj-time "0.5.1"]
-                 [incanter "1.5.0-SNAPSHOT"]
-                 [clojurewerkz/titanium "1.0.0-beta1"]]
+                 [jkkramer/loom "0.2.0"]]
   :main familiar.core)
