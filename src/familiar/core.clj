@@ -61,21 +61,21 @@
   `(tag-var- ~@(map str args)))
 
 (defn- new-var-
-  [[name validator default]
-   & {:keys [expt time-res unit tags]
-        :or {expt active-expt
-             time-res "date"
-             unit ""
-             tags '()}}]
+  [[varname validator default] & {:keys [expt time-res unit tags]
+                                    :or {expt active-expt
+                                         time-res "date"
+                                         unit ""
+                                         tags "()"}}]
   (assert ((eval (read-string validator)) (read-string default))
           "Given default fails validator.")
   (insert variable
-    (values {:name name
+    (values {:name varname
              :default default
              :unit unit
              :time-res time-res
-             :validator validator}))
-  (apply tag-var- name (read-string tags)))
+             :fn validator
+             :deps "nil"}))
+  (apply tag-var- varname (read-string tags)))
 
 (defmacro new-var
   "Adds variable to experiment.
@@ -88,6 +88,30 @@
   [& exprs]
   `(with-str-args new-var- ~exprs))
 
+(defn- new-pred-
+  [[predname function depend] & {:keys [expt time-res unit tags]
+                                   :or {expt active-expt
+                                        time-res "date"
+                                        unit ""
+                                        tags "()"}}]
+  (insert variable
+    (values {:name predname
+             :default "nil" ;FIXME calc pred?
+             :unit unit
+             :time-res time-res
+             :fn function
+             :deps depend}))
+  (apply tag-var- predname (read-string tags)))
+
+(defmacro new-pred
+  "Adds predicate to experiment.
+     Example:
+     (new-pred accomplished 
+               (fn [t] (>= (value productivity t) 3))
+               productivity)"
+  [predname function & depend]
+    (new-pred- [(str predname) (str function) (str (vec (map str depend)))] ,, ))
+
 (defn- display-
   [tags]
   (let [tags (if (seq tags)
@@ -97,7 +121,7 @@
          (map (fn [t] (update-in t [:tag]
                                  #(map :name %))))
          (filter #(tags (:tag %)))
-         (map #(select-keys % [:default :validator :unit :tag :name]))
+         (map #(select-keys % [:default :fn :unit :tag :name]))
          pprint)))
 
 (defmacro display
@@ -107,7 +131,7 @@
   (display- (map str tags)))
 
 (defn- validate [varname value]
-  (let [validator (-> (get-field :validator variable varname)
+  (let [validator (-> (get-field :fn variable varname)
                       read-string
                       eval)]
     (validator value)))

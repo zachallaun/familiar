@@ -6,7 +6,8 @@
               [core :refer :all :rename {extend elongate}]
               [coerce :refer :all]
               [format :refer :all]
-              [local :refer :all]]
+              [local :refer :all]
+              [periodic :refer :all]]
             [familiar
               [dbconfig :refer :all]]))
 
@@ -38,16 +39,6 @@
                       names)]
      (insert this
        (values {:name item})))))
-
-(defn value [varname time]
-  (->> (select instance
-         (with variable
-           (fields :name))
-         (where {:time (slice time varname)
-                 :variable.name varname}))
-       first
-       :value
-       read-string))
 
 (defn no-concurrent-instance? [time varname]
   (empty? (select instance

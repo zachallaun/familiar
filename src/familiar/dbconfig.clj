@@ -25,7 +25,7 @@
 
 (defentity variable
   (entity-fields :name :default :unit :time-res
-                 :validator :variable_tag_id)
+                 :fn :variable_tag_id :deps)
   (many-to-many tag :variable_tag)
   (has-many instance))
 
@@ -40,7 +40,7 @@
 (defentity variable_tag
   (entity-fields :variable_id :tag_id))
 
-(defn- surrogate-key [table]
+(defn surrogate-key [table]
   (integer table :id :auto-inc :primary-key))
 
 (defn- refer-to [table ptable]
@@ -66,21 +66,23 @@
     (println "Closed open experiment")
     (catch Throwable e (.getMessage e)))
   (open-global db)
-  (try (noprint
-    (create (tbl :variable
-                 (varchar :time-res 100)
-                 (varchar :validator 100)
-                 (varchar :default 100)
-                 (varchar :unit 100)
-                 (varchar :name 100 :unique)))
-    (create (tbl :instance
-                 (varchar :time 100)
-                 (index :time_unique [:time :variable_id] :unique)
-                 (varchar :value 100)
-                 (refer-to :variable)))
-    (create (tbl :tag
-                 (varchar :name 100)))
-    (create (tbl :variable_tag
-                 (refer-cascade :variable)
-                 (refer-cascade :tag))))
-    (catch Throwable e (println "Database found. Hooray."))))
+  (try 
+    (let [len 100, llen 1000]
+      (create (tbl :variable
+                   (varchar :time-res len)
+                   (varchar :fn llen)
+                   (varchar :default len)
+                   (varchar :unit len)
+                   (varchar :deps llen)
+                   (varchar :name len :unique)))
+      (create (tbl :instance
+                   (varchar :time len)
+                   (index :time_unique [:time :variable_id] :unique)
+                   (varchar :value len)
+                   (refer-to :variable)))
+      (create (tbl :tag
+                   (varchar :name len :unique)))
+      (create (tbl :variable_tag
+                   (refer-cascade :variable)
+                   (refer-cascade :tag))))
+    (catch Throwable e (println (.getMessage e)))))
