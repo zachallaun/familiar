@@ -227,7 +227,8 @@
   [& {:keys [expt instant]
         :or {expt active-expt, instant @active-time}}]
   (remove (set (missing :expt expt :instant instant))
-          (map :name (select variable (fields :name)))))
+          (map :name (select variable (fields :name)
+                       (where {:default [not= "nil"]})))))
 
 (defn- defaults-
   [variables & {:keys [expt instant]
@@ -246,13 +247,13 @@
   [& exprs]
   `(with-str-args defaults- ~exprs))
 
+;; TODO (defn review
+
 (defn change-day 
   "Sets active time n days ahead or behind."
   [n]
   (swap! active-time
-         #(-> (parse-time %)
-              (plus (days n))
-              unparse-time)))
+         #(plus % (days n))))
 
 (defn datagen 
   "Generates fake data for every delta-t in a variable from instant 
@@ -261,8 +262,9 @@
   [varname func delta-t duration 
    & {:keys [expt instant]
         :or {expt active-expt, instant @active-time}}]
-  (let [instants (range-instants instant delta-t duration)
-        time-res (keyword (get-field :time-res variable varname))]
+  (let [[start end] (sort [instant (plus instant duration)])
+        instants    (range-instants start end delta-t)
+        time-res    (keyword (get-field :time-res variable varname))]
     (doall
       (map #(->> (unparse-time  %)
                  (datum varname (func) :instant))

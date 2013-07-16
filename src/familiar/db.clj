@@ -20,7 +20,7 @@
 
 (defn present []
   (unparse-time (local-now)))
-(def active-time (atom (present)))
+(def active-time (atom (local-now)))
 
 (def precision-table
   {:date (days 1)})
