@@ -29,14 +29,17 @@
   (digraph {classpred featurepreds}))
 
 (defn value- [varname time]
-  (->> (select instance
-         (with variable
-           (fields :name))
-           (where {:time (slice time varname)
-                   :variable.name varname}))
-       first
-       :value
-       read-string))
+  (-> (select instance
+        (with variable
+          (fields :name))
+          (where {:time (slice time varname)
+                  :variable.name varname}))
+      first
+      :value
+      (as-> x
+        (if x
+          (read-string x)
+          nil))))
 
 (defmacro value [varname t]
   `(value- ~(str varname) ~t))
@@ -66,13 +69,6 @@
                          insts)))
        count))
 
-(defn possible-vals [variables trange]
-  (map (comp set
-             #(map :value %)
-             #(range-values % trange))
-       variables))
-
-;; FIXME fix passing around strings in every other function. PASS DATETIMES
 (defn cond-prob-dist
   "Calculates the conditional probability distribution for variable
      and its parents in time range [:start :end], or for forever"

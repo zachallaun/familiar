@@ -34,8 +34,7 @@
 
 (defn slice [instant varname]
   (let [time-res (keyword (get-field :time-res variable varname))]
-    (->> (parse-time instant)
-         (unparse (formatters time-res)))))
+    (unparse (formatters time-res) instant)))
 
 
 (defn range-instants [start end delta-t]
@@ -52,6 +51,12 @@
       (fields :time :value)
       (where {:variable_id (get-field :id variable varname)
               :time        [between (map unparse-time [start end])]}))))
+
+(defn possible-vals [variables trange]
+  (map (comp set
+             #(map :value %)
+             #(range-values % trange))
+       variables))
 
 (defn create-if-missing [this & names]
  (doall
