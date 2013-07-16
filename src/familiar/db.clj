@@ -14,6 +14,10 @@
 (def time-form    (formatters :date-time))
 (def unparse-time (partial unparse time-form))
 (def parse-time   (partial parse time-form))
+(def date-form    (formatters :date))
+(def unparse-date (partial unparse date-form))
+(def parse-date   (partial parse date-form))
+
 (defn present []
   (unparse-time (local-now)))
 (def active-time (atom (present)))
@@ -34,22 +38,20 @@
          (unparse (formatters time-res)))))
 
 
-(defn range-instants [begin delta-t duration]
-  (let [begin (parse-time begin)
-        final (plus begin duration)]
-    (take-while (partial within? begin final)
-                (iterate #(plus % delta-t)
-                         begin))))
+(defn range-instants [start end delta-t]
+  (take-while (partial within? start end)
+              (iterate #(plus % delta-t)
+                       start)))
 
-(defn range-values [varname begin duration]
+(defn range-values [varname [start end]]
   (let [time-res (keyword (get-field :time-res variable varname))
         times
-        (->> (range-instants begin (precision-table time-res) duration)
+        (->> (range-instants start end (precision-table time-res))
              (map (partial unparse (formatters time-res))))]
     (select instance
       (fields :time :value)
       (where {:variable_id (get-field :id variable varname)
-              :time        [in times]}))))
+              :time        [between (map unparse-time [start end])]}))))
 
 (defn create-if-missing [this & names]
  (doall
