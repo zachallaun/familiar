@@ -51,59 +51,63 @@
                                     %)
                                  pred))))
 
-;; TODO does not work if no parents
+(defn times-matching
+  [var-vals trange]
+  (->> (select instance
+         (fields :time :value)
+         (with variable
+           (fields :name))
+         (where {:variable.name [in (keys var-vals)]
+                 :time  [between (map unparse-time trange)]}))
+       (partition (count var-vals))
+       (filter (fn [insts]
+                 (every? #(= (var-vals (:name %))
+                             (:value %))
+                         insts)))
+       count))
+
+(defn possible-vals [variables trange]
+  (map (comp set
+             #(map :value %)
+             #(range-values % trange))
+       variables))
+
+;; FIXME fix passing around strings in every other function. PASS DATETIMES
 (defn cond-prob-dist
   "Calculates the conditional probability distribution for variable
-     and its parents in time range (+ :instant duration) given step size
-     delta-t (which really shouldn't be more precise than the most
-     precise variable in this CPD)"
-  [skeleton varname delta-t duration
-   & {:keys [instant]
-        :or {instant @active-time}}]
-  (let [variables   (cons varname ((:in skeleton) varname))
-        start-end   [(slice instant varname)
-                     (unparse-time (plus (parse-time instant) duration))]
-        present-vals
-          (zipmap variables
-                  (map (comp set
-                             #(map :value %)
-                             #(range-values % instant duration))
-                       variables))]
+     and its parents in time range [:start :end], or for forever"
+  [skeleton varname
+   & {:keys [start end]
+        :or {start (parse-date "2013-07-01")
+             end   (local-now)}}]
+  (let [trange       [start end]
+        variables    (conj ((:in skeleton) varname) varname)
+        present-vals (possible-vals variables trange)]
     (apply merge
-      (for [valcoll (apply cartesian-product (reverse (vals present-vals)))]
-        (let [this-vals   (zipmap variables valcoll)
-              n-instances
-                (count
-                  (->> (select instance
-                         (fields :time :value)
-                         (with variable
-                           (fields :name))
-                         (where {:variable.name [in ((:in skeleton) varname)]
-                                 :time [between start-end]}))
-                       (partition (dec (count variables)))
-                       (filter (fn [insts]
-                                 (every? #(= (this-vals (:name %))
-                                             (:value %))
-                                         insts)))))]
+      (for [valcoll (apply cartesian-product present-vals)]
+        (let [this-vals     (zipmap variables valcoll)
+              count-matches #(times-matching (select-keys this-vals %) trange)
+              n-instances   (count-matches (set ((:in skeleton) varname)))]
           (hash-map this-vals
-                    (-<>> (select instance
-                            (fields :time :value)
-                            (with variable
-                              (fields :name))
-                            (where {:variable.name [in variables]
-                                    :time          [between start-end]}))
-                          (partition (count variables))
-                          (filter (fn [insts]
-                                    (every? #(= (this-vals (:name %))
-                                                (:value %))
-                                            insts)))
-                          count
-                          (/ <> n-instances 1.0))))))))
+                    (/ (count-matches variables)
+                       n-instances
+                       1.0)))))))
 
-
-
-;; example return value:
-;; {{:var1 "false", :var2 "false"} 0.3
-;;  {:var1 "false", :var2 "true"}  0.05
-;;  {:var1 "true",  :var2 "false"} 0.55
-;;  {:var1 "true",  :var2 "true"}  0.1}
+(defn prior-dist
+  "Calculates the prior distribution for a variable
+     in time range [:start :end], or for forever"
+  [varname
+   & {:keys [start end]
+        :or {start (parse-date "2013-07-01")
+             end   (local-now)}}]
+  (let [trange     [start end]
+        presents   `{~varname ~@(possible-vals [varname] trange)}
+        possible   (map #(hash-map varname %) (presents varname))
+        total      (apply +
+                          (map #(times-matching {varname %} trange)
+                               (presents varname)))]
+    (zipmap possible
+            (map #(/ (times-matching % trange)
+                     total
+                     1.0)
+                 possible))))
