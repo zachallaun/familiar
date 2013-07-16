@@ -48,11 +48,37 @@
   [pred t]
   (let [[deps pred] (map #(read-string (get-field % variable pred))
                          [:deps :fn])
-        values (zipmap deps (map #(value- % t) deps))]
-    (eval (clojure.walk/postwalk #(if ((set deps) (str %))
-                                    (values (str %))
-                                    %)
-                                 pred))))
+        var-values  (zipmap deps (map #(value- % t) deps))]
+    (try 
+      (eval (clojure.walk/postwalk
+              #(if ((set deps) (str %))
+                   (var-values (str %))
+                   %)
+              pred))
+      (catch Exception e nil))))
+
+(defn realize-pred
+  [pred] ; time range
+  (let [deps (set (mapcat (comp read-string :deps)
+                          (select variable
+                            (where {:name pred}))))
+        exist (map :time
+                   (select instance
+                     (where {:variable_id (get-field :id variable pred)})))]
+    (doseq [t (apply sorted-set 
+                (map :time (select instance
+                             (fields :time)
+                             (with variable
+                               (fields :name))
+                             (where {:variable.name [in deps]
+                                     :time [not-in exist]}))))]
+      (insert instance
+        (values {:time t
+                 :value (str (calc-pred pred (parse-date t)))
+                 :variable_id (get-field :id variable pred)})))
+    (delete instance
+      (where {:value ""
+              :variable_id (get-field :id variable pred)}))))
 
 (defn times-matching
   [var-vals trange]
