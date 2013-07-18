@@ -256,11 +256,13 @@
 
 ;; TODO (defn review
 
-(defn change-day 
-  "Sets active time n days ahead or behind."
-  [n]
+(defn change-time
+  "Changes active time by specified interval.
+     Example: (change-time (days -1) (hours -6))"
+  [& interval]
   (swap! active-time
-         #(plus % (days n))))
+         #(apply plus % interval))
+  (readable-present))
 
 (defn datagen 
   "Generates fake data for every delta-t in a variable from instant 
