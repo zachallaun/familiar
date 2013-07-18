@@ -101,7 +101,7 @@
   [skeleton varname
    & {:keys [start end]
         :or {start (parse-date "2013-07-01")
-             end   (local-now)}}]
+             end   @active-time}}]
   (let [trange       [start end]
         variables    (conj ((:in skeleton) varname) varname)
         present-vals (possible-vals variables trange)]
@@ -121,7 +121,7 @@
   [varname
    & {:keys [start end]
         :or {start (parse-date "2013-07-01")
-             end   (local-now)}}]
+             end   @active-time}}]
   (let [trange     [start end]
         presents   `{~varname ~@(possible-vals [varname] trange)}
         possible   (map #(hash-map varname %) (presents varname))

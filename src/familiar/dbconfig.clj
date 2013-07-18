@@ -7,7 +7,7 @@
              [schema :refer :all]]
             [korma.core :refer [defentity entity-fields
                                 has-one has-many many-to-many
-                                belongs-to]]))
+                                belongs-to select]]))
 
 (def bit-bucket-writer
   (proxy [java.io.Writer] []

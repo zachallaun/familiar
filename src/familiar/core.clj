@@ -62,13 +62,15 @@
   (assert (seq (get-field :name variable varname))
           (str "No variable by the name " varname "."))
   (apply create-if-missing tag tags)
-  (for [name tags]
+  (for [item tags]
     (insert variable_tag
-      (values {:tag_id      (get-field :id tag name)
-               :variable_id (get-field :id variable varname)}))))
+      (values {:tag_id      (get-field :id tag item)
+               :variable_id (get-field :id variable varname)})))
+  (println (str varname " tagged: " tags)))
 
 (defmacro tag-var
-  "Adds tags to variable"
+  "Adds tags to variable
+     Example: (tag-var aye-aye primate terrifying nocturnal)"
   [& args]
   `(tag-var- ~@(map str args)))
 
@@ -164,13 +166,15 @@
     (assert (not (nil? (get-field :default variable varname)))
             "Cannot add data for predicates")
     (assert (validate varname (read-string value))
-            (str value " is invalid for " varname))
+            (str value " is invalid for " varname
+                 "\nValidator: " (get-field :fn variable varname)))
     (assert (no-concurrent-instance? timeslice varname)
             (str varname " already has value at " timeslice))
     (insert instance
       (values {:time timeslice
                :value value
-               :variable_id (get-field :id variable varname)}))))
+               :variable_id (get-field :id variable varname)}))
+    (str varname ": " value)))
 
 (defn- data-
   [coll & {:keys [expt instant]
@@ -186,7 +190,7 @@
 (defmacro data
   "Adds instances of variables with values.
      Example:
-     (add-data mice 6 cats 2 dogs 0)"
+     (data marmots 3 lorises 7 capuchins 0 joy true)"
   [& exprs]
   `(with-str-args data- ~exprs))
 
@@ -273,19 +277,77 @@
                  (datum varname (func) :instant))
            instants))))
 
+;;;;;;;;;
+;; Using
+;;
+
+(def valid-fns 
+  {:variable  #{'new-var 'new-pred 'tag-var 'display 'realize-pred}
+   :data      #{'data 'erase 'entered 'missing 'defaults 'change-time}
+   :graph     #{'naive-skeleton 'cond-prob-dist}
+   :familiar  #{'open! 'datagen 'doc}
+   :etc       #{'help}})
+
+(defn progloop [] 
+  (println "\n///")
+  (let [input (read-string (str \( (read-line) \)))]
+    (println "\\\\\\")
+    (try
+      (cond 
+        (#{'(quit) '(exit)} input)
+        (println "Hooray! See you later.")
+
+        (#{'sudo} (first input))
+        (do (pprint (eval (second input)))
+            (progloop))
+
+        ((set (apply concat (vals valid-fns))) (first input))
+        (do (pprint (eval input))
+            (progloop))
+
+        :else
+        (do (println (str "That is not allowed here. Start a Clojure REPL "
+                          "if you want to think outside the box"))
+            (progloop)))
+      (catch Exception e (println (str "That didn't work.\n" (.getMessage e)))
+                         (progloop)))))
+
+(defn -main
+  [& args]
+  (alter-var-root #'*read-eval* (constantly false))
+  (binding [*ns* (the-ns 'familiar.core)]
+    (println (str "\nFamiliar - Quantified Reasoning Engine"
+                  "\nThe active time is " (readable-present)
+                  "\nFor assistance type \"help\""))
+    (progloop)))
+
 ;;;;;;;;;;;
 ;; Helpers
 ;;
 
-(defn help
-  "Informs you what's what."
-  []
-  (->> (for [[n v] (ns-interns 'familiar.core)]
-         [(str "+ " n) "\n    " (:doc (meta v))])
-       (remove #(nil? (nth % 2)))
-       (interpose "\n")
-       flatten
-       println))
+(defn help-
+  [domain]
+  (let [domain (if domain
+                 (domain valid-fns)
+                 (hash-set 'help))]
+    (->> (for [[n v] (filter #(domain (first %))
+                             (ns-map 'familiar.core))]
+           [(str "  " n) "\n    " (:doc (meta v))])
+         (remove #(nil? (nth % 2)))
+         (interpose "\n")
+         flatten
+         println)))
+
+(defmacro help
+  "Informs you how to do things, e.g. (help data)
+     Valid arguments:
+     variable - functions for creating, tagging, and inspecting variables
+     data     - functions for entering and inspecting data
+     graph    - functions for creating and using graphs
+     familiar - none of the above
+     (quit by typing exit or quit)"
+  [& domain]
+  (help- (keyword (first domain))))
 
 (defn- str->key [s] 
   (->> (str s)
@@ -300,8 +362,3 @@
         args (map str args)
         opts (map #(if (keyword? %) % (str %)) opts)]
     `(~f '~args ~@opts)))
-
-#_(defn -main
-  [& args]
-  (alter-var-root #'*read-eval* (constantly false))
-  (println "Launching Familiar"))

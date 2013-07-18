@@ -21,6 +21,8 @@
 (defn present []
   (unparse-time (local-now)))
 (def active-time (atom (local-now)))
+(defn readable-present []
+  (unparse (formatters :rfc822) @active-time))
 
 (def precision-table
   {:date (days 1)})
