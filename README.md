@@ -10,6 +10,10 @@ Goals
 * Guided experimentation to quickly and confidently determine the most significant factors impacting your productivity, mood, health, profit, etc.
 * Better Living Through Numbers
 
+Contact
+-------
 If you think you might have anything to contribute to Familiar, whether in the form of code, advice, feedback, reading recommendations, vitriol, or crayon drawings, contact me at [my github username]uson2.718 at gmail dot com.
 
+License
+-------
 This is free and unencumbered public domain software. For more information, see http://unlicense.org/ or the accompanying UNLICENSE file.
