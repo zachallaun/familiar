@@ -1,52 +1,55 @@
 (ns familiar.core
-  ;(:gen-class)
-   (:require [familiar
-               [dbconfig :refer :all]
-               [db :refer :all]
-               [validator :refer :all]
-               [graph :refer :all]]
-             [korma
-               [core :refer :all]
-               [db :refer :all]]
-             [lobos
-               [connectivity :as lc]
-               [core :as l]
-               [schema :as ls]]
-             [clojure 
-               [walk :as walk]
-               [pprint :refer [pprint]]]
-             [clojure.java.jdbc :as jdb]
-             [clojure.java.jdbc.sql :as sql]
-             [swiss-arrows.core :refer :all]
-             [clj-time
-               [core :refer :all :rename {extend elongate}]
-               [coerce :refer :all]
-               [format :refer :all]
-               [local :refer :all]]
-             [loom
-               [graph :refer :all]
-               [alg :refer :all]
-               [gen :refer :all]
-               [attr :refer :all]
-               [label :refer :all]
-               [io :refer :all]]))
+  (:gen-class :main true)
+  (:require [familiar
+              [dbconfig :refer :all]
+              [db :refer :all]
+              [validator :refer :all]
+              [graph :refer :all]]
+            [korma
+              [core :refer :all]
+              [db :refer :all]]
+            [lobos
+              [connectivity :as lc]
+              [core :as l]
+              [schema :as ls]]
+            [clojure 
+              [walk :as walk]
+              [pprint :refer [pprint]]
+              [repl :refer [doc source]]]
+            [clojure.java.jdbc :as jdb]
+            [clojure.java.jdbc.sql :as sql]
+            [swiss-arrows.core :refer :all]
+            [clj-time
+              [core :refer :all :rename {extend elongate}]
+              [coerce :refer :all]
+              [format :refer :all]
+              [local :refer :all]]
+            [loom
+              [graph :refer :all]
+              [alg :refer :all]
+              [gen :refer :all]
+              [attr :refer :all]
+              [label :refer :all]
+              [io :refer :all]]))
 
-(declare str->key with-str-args display-vars active-expt active-expt-name)
+(declare str->key with-str-args display-vars active-expt)
 
 ;;;;;;;;;;;;;;;
 ;; Experiments
 ;;
 
 (def db (atom (h2 {:db "data/default/default.db"})))
-(def korma-db (atom (create-db @db)))
 
-(defn open!
-  "Changes active experiment to that with the specified name"
+(defn open-
   [file]
   (reset! db (h2 {:db (str "data/" file  "/" file ".db")}))
-  (reset! korma-db (create-db @db))
-  (default-connection @korma-db)
+  (default-connection (create-db @db))
   (create-tables @db))
+
+(defmacro open!
+  "Changes active experiment to that with the specified name"
+  [file]
+  (open- (str file)))
 
 (open! "default")
 

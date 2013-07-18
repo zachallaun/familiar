@@ -64,25 +64,27 @@
   (try
     (close-global)
     (println "Closed open experiment")
-    (catch Throwable e (.getMessage e)))
+    (catch Exception e))
   (open-global db)
-  (try 
-    (let [len 100, llen 1000]
-      (create (tbl :variable
-                   (varchar :time-res len)
-                   (varchar :fn llen)
-                   (varchar :default len)
-                   (varchar :unit len)
-                   (varchar :deps llen)
-                   (varchar :name len :unique)))
-      (create (tbl :instance
-                   (varchar :time len)
-                   (index :time_unique [:time :variable_id] :unique)
-                   (varchar :value len)
-                   (refer-to :variable)))
-      (create (tbl :tag
-                   (varchar :name len :unique)))
-      (create (tbl :variable_tag
-                   (refer-cascade :variable)
-                   (refer-cascade :tag))))
-    (catch Throwable e (println (.getMessage e)))))
+  (if (noprint (try (select variable) (catch Exception e nil)))
+    (println "Database found.")
+    (try 
+      (let [len 100, llen 1000]
+        (create (tbl :variable
+                     (varchar :time-res len)
+                     (varchar :fn llen)
+                     (varchar :default len)
+                     (varchar :unit len)
+                     (varchar :deps llen)
+                     (varchar :name len :unique)))
+        (create (tbl :instance
+                     (varchar :time len)
+                     (index :time_unique [:time :variable_id] :unique)
+                     (varchar :value len)
+                     (refer-to :variable)))
+        (create (tbl :tag
+                     (varchar :name len :unique)))
+        (create (tbl :variable_tag
+                     (refer-cascade :variable)
+                     (refer-cascade :tag))))
+      (catch Exception e (println (.getMessage e))))))
