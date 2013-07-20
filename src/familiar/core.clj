@@ -258,8 +258,6 @@
   [& exprs]
   `(with-str-args defaults- ~exprs))
 
-;; TODO (defn review
-
 (defn change-time
   "Changes active time by specified interval.
      Example: (change-time (days -1) (hours -6))"
@@ -288,10 +286,10 @@
   {:variable  #{'new-var 'new-pred 'tag-var 'display 'realize-pred}
    :data      #{'data 'erase 'entered 'missing 'defaults 'change-time}
    :graph     #{'naive-skeleton 'cond-prob-dist}
-   :familiar  #{'open! 'datagen 'doc}
+   :familiar  #{'open! 'doc}
    :etc       #{'help}})
 
-(defn progloop [] 
+(defn cl-loop [] 
   (println "\n///")
   (let [input (read-string (str \( (read-line) \)))]
     (println "\\\\\\")
@@ -302,18 +300,18 @@
 
         (#{'sudo} (first input))
         (do (pprint (eval (second input)))
-            (progloop))
+            (cl-loop))
 
         ((set (apply concat (vals valid-fns))) (first input))
         (do (pprint (eval input))
-            (progloop))
+            (cl-loop))
 
         :else
         (do (println (str "That is not allowed here. Start a Clojure REPL "
                           "if you want to think outside the box"))
-            (progloop)))
+            (cl-loop)))
       (catch Exception e (println (str "That didn't work.\n" (.getMessage e)))
-                         (progloop)))))
+                         (cl-loop)))))
 
 (defn -main
   [& args]
@@ -322,7 +320,7 @@
     (println (str "\nFamiliar - Quantified Reasoning Engine"
                   "\nThe active time is " (readable-present)
                   "\nFor assistance type \"help\""))
-    (progloop)))
+    (cl-loop)))
 
 ;;;;;;;;;;;
 ;; Helpers

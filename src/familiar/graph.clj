@@ -88,48 +88,35 @@
            (fields :name))
          (where {:variable.name [in (keys var-vals)]
                  :time  [between (map unparse-time trange)]}))
-       (partition (count var-vals))
-       (filter (fn [insts]
-                 (every? #(= (var-vals (:name %))
-                             (:value %))
-                         insts)))
+       (group-by :time) ; assumes same time resolution!
+       vals
+       (map #(zipmap (map :name %) (map :value %)))
+       (filter #(= % var-vals))
        count))
 
 (defn cond-prob-dist
   "Calculates the conditional probability distribution for variable
-     and its parents in time range [:start :end], or for forever"
+     in time range [:start :end]"
   [skeleton varname
    & {:keys [start end]
         :or {start (parse-date "2013-07-01")
              end   @active-time}}]
-  (let [trange       [start end]
-        variables    (conj ((:in skeleton) varname) varname)
-        present-vals (possible-vals variables trange)]
+  (let [trange        [start end]
+        g-parents     ((:in skeleton) varname)
+        variables     (conj g-parents varname)
+        present-vals  (possible-vals variables trange)
+        possibilities (apply cartesian-product present-vals)]
     (apply merge
-      (for [valcoll (apply cartesian-product present-vals)]
+      (for [valcoll possibilities]
         (let [this-vals     (zipmap variables valcoll)
-              count-matches #(times-matching (select-keys this-vals %) trange)
-              n-instances   (count-matches (set ((:in skeleton) varname)))]
+              count-matches (times-matching this-vals trange)
+              n-instances   (apply +
+                                   (map #(times-matching (assoc this-vals
+                                                                varname
+                                                                %)
+                                                         trange)
+                                        (first (possible-vals [varname] trange))))]
           (hash-map this-vals
-                    (/ (count-matches variables)
+                    (/ count-matches
                        n-instances
                        1.0)))))))
-
-(defn prior-dist
-  "Calculates the prior distribution for a variable
-     in time range [:start :end], or for forever"
-  [varname
-   & {:keys [start end]
-        :or {start (parse-date "2013-07-01")
-             end   @active-time}}]
-  (let [trange     [start end]
-        presents   `{~varname ~@(possible-vals [varname] trange)}
-        possible   (map #(hash-map varname %) (presents varname))
-        total      (apply +
-                          (map #(times-matching {varname %} trange)
-                               (presents varname)))]
-    (zipmap possible
-            (map #(/ (times-matching % trange)
-                     total
-                     1.0)
-                 possible))))
