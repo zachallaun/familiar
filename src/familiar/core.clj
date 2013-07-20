@@ -269,18 +269,15 @@
   (readable-present))
 
 (defn datagen 
-  "Generates fake data for every delta-t in a variable from instant 
-     to (plus instant duration) according to func. Remember that every
-     value func could return should be a string."
+  "Generates data for every delta-t in a variable from instant 
+     to (plus instant duration) according to func."
   [varname func delta-t duration 
    & {:keys [expt instant]
         :or {expt active-expt, instant @active-time}}]
   (let [[start end] (sort [instant (plus instant duration)])
-        instants    (range-instants start end delta-t)
-        time-res    (keyword (get-field :time-res variable varname))]
+        instants    (range-instants start end delta-t)]
     (doall
-      (map #(->> (unparse-time  %)
-                 (datum varname (func) :instant))
+      (map #(datum varname (str (func)) :instant %)
            instants))))
 
 ;;;;;;;;;
