@@ -233,9 +233,13 @@
      the time pixel matching the active time/given time."
   [& {:keys [expt instant]
         :or {expt active-expt, instant @active-time}}]
-  (remove (set (missing :expt expt :instant instant))
-          (map :name (select variable (fields :name)
-                       (where {:default [not= "nil"]})))))
+  (as-> (select variable
+          (fields :name)
+          (where {:default [not= "nil"]})) x
+        (map :name x)
+        (remove (set (missing :expt expt :instant instant)) x)
+        (zipmap x (map #(value- % instant) x))))
+
 
 (defn- defaults-
   [variables & {:keys [expt instant]
