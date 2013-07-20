@@ -102,21 +102,22 @@
         :or {start (parse-date "2013-07-01")
              end   @active-time}}]
   (let [trange        [start end]
-        g-parents     ((:in skeleton) varname)
-        variables     (conj g-parents varname)
+        variables     (conj ((:in skeleton) varname) varname)
         present-vals  (possible-vals variables trange)
         possibilities (apply cartesian-product present-vals)]
     (apply merge
       (for [valcoll possibilities]
         (let [this-vals     (zipmap variables valcoll)
               count-matches (times-matching this-vals trange)
-              n-instances   (apply +
-                                   (map #(times-matching (assoc this-vals
-                                                                varname
-                                                                %)
-                                                         trange)
-                                        (first (possible-vals [varname] trange))))]
+              denom         (apply +
+                              (map #(times-matching (assoc this-vals varname %)
+                                                    trange)
+                                   (first (possible-vals [varname] trange))))]
           (hash-map this-vals
                     (/ count-matches
-                       n-instances
-                       1.0)))))))
+                       (double denom))))))))
+
+(defn prior-dist
+  "Calculates the prior disribution for variable in time range [:start :end]"
+  [varname]
+  (cond-prob-dist (digraph varname) varname))
