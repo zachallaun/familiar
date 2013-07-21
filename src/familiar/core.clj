@@ -309,10 +309,11 @@
 ;;
 
 (def valid-fns 
-  {:variable  #{'new-var 'new-pred 'tag-var 'display 'realize-pred}
-   :data      #{'data 'erase 'entered 'missing 'defaults 'change-time}
-   :inference #{'maximize}
-   :familiar  #{'open! 'doc}
+  {:variable  #{'new-var 'tag-var 'display 'new-pred}
+   :data      #{'data 'erase 'entered 'missing
+                          'defaults 'change-time}
+   :inference #{'correlations}
+   :familiar  #{'open! 'doc 'pref 'prefs}
    :etc       #{'help}})
 
 (defn cl-loop [] 
@@ -343,10 +344,18 @@
   [& args]
   (alter-var-root #'*read-eval* (constantly false))
   (binding [*ns* (the-ns 'familiar.core)]
-    (println (str "\nFamiliar - Quantified Reasoning Engine"
-                  "\nThe active time is " (readable-present)
-                  "\nFor assistance type \"help\""))
-    (cl-loop)))
+    (cond
+      (seq args)
+      (do (println args)
+          (println
+            (->> (map read-string args)
+                 (map eval))))
+
+      :else
+      (do (println (str "\nFamiliar - Quantified Reasoning Assistant"
+                        "\nThe active time is " (readable-present)
+                        "\nFor help type \"help\""))
+          (cl-loop)))))
 
 ;;;;;;;;;;;
 ;; Helpers

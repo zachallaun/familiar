@@ -102,6 +102,7 @@
    & {:keys [start end]
         :or {start (parse-date "2013-07-01")
              end   (plus @active-time (days 1))}}]
+  (realize-pred varname)
   (let [trange        [start end]
         variables     (conj ((:in skeleton) varname) varname)
         present-vals  (possible-vals variables trange)
@@ -123,25 +124,34 @@
   [varname]
   (cond-prob-dist (digraph varname) varname))
 
-(defn maximize-
-  [varname desired-val]
+(defn correlations-
+  [varname desired-val
+   & {:keys [excl start end]
+        :or {excl  []
+             start (parse-date "2013-07-01")
+             end   (plus @active-time (days 1))}}]
   (let [skeleton  (naive-bayes varname
-                               (disj (set (map :name (select variable)))
-                                     varname))
+                               (apply disj (set (map :name (select variable)))
+                                           (conj excl varname)))
         variables (:nodeset skeleton)
         others    (disj variables varname)]
     (sort #(> (val (first %1)) (val (first %2)))
       (for [thing others]
-        (as-> (cond-prob-dist thing skeleton) x
+        (as-> (cond-prob-dist thing skeleton :start start :end end) x
               (filter #(= desired-val ((key %) varname)) x)
               (sort #(> (val %1) (val %2)) x)
               (first x)
               {(dissoc (first x) varname) (second x)})))))
 
-(defmacro maximize
-  "Builds a naive Bayesian classifier with given variable as class variable,
-     then returns a list of the values for all other variables that maximize
-     the probability of class variable taking on desired value, in order
-     of effect size."
-  [varname desired-val]
-  `(pprint (maximize- (str '~varname) (str '~desired-val))))
+(defmacro correlations
+  "Returns a list of variables and their values most strongly correlated
+     with the given variable taking on the given value."
+  [varname desired-val
+   & {:keys [excl start end]
+        :or {excl  []
+             start '(parse-date "2013-07-01")
+             end   '(plus @active-time (days 1))}}]
+  `(pprint (correlations- (str '~varname)
+                          (str '~desired-val)
+                          :excl '~(vec (map str excl))
+                          :start ~start :end ~end)))
