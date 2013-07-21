@@ -35,6 +35,31 @@
 (declare str->key with-str-args display-vars active-expt)
 
 ;;;;;;;;;;;;;;;
+;; Preferences
+;;
+
+(spit "preferences" "" :append true)
+(if (= "" (slurp "preferences"))
+  (spit "preferences" {:default "default"}))
+
+(def preferences (atom (read-string (slurp "preferences"))))
+
+(defn pref-
+  [title thingy]
+  (swap! preferences (assoc title thingy))
+  (spit "preferences" @preferences))
+
+(defmacro pref
+  "Sets a setting to a value."
+  [title thingy]
+  `(pref- (keyword ~title) (str ~thingy)))
+
+(defn prefs
+  "Displays your current preferences."
+  []
+  (pprint @preferences))
+
+;;;;;;;;;;;;;;;
 ;; Experiments
 ;;
 
@@ -51,7 +76,7 @@
   [file]
   (open- (str file)))
 
-(open! "default")
+(open- (:default @preferences))
 
 ;;;;;;;;;;;;;
 ;; Variables
@@ -105,11 +130,12 @@
   `(with-str-args new-var- ~exprs))
 
 (defn- new-pred-
-  [[predname function depend] & {:keys [expt time-res unit tags]
-                                   :or {expt active-expt
-                                        time-res "date"
-                                        unit ""
-                                        tags "()"}}]
+  [[predname function depend]
+   & {:keys [expt time-res unit tags]
+        :or {expt active-expt
+             time-res "date"
+             unit ""
+             tags "()"}}]
   (insert variable
     (values {:name predname
              :default "nil"
