@@ -285,7 +285,7 @@
 (def valid-fns 
   {:variable  #{'new-var 'new-pred 'tag-var 'display 'realize-pred}
    :data      #{'data 'erase 'entered 'missing 'defaults 'change-time}
-   :graph     #{'naive-skeleton 'cond-prob-dist}
+   :inference #{'maximize}
    :familiar  #{'open! 'doc}
    :etc       #{'help}})
 
@@ -342,10 +342,10 @@
 (defmacro help
   "Informs you how to do things, e.g. (help data)
      Valid arguments:
-     variable - functions for creating, tagging, and inspecting variables
-     data     - functions for entering and inspecting data
-     graph    - functions for creating and using graphs
-     familiar - none of the above
+     variable  - functions for creating, tagging, and inspecting variables
+     data      - functions for entering and inspecting data
+     inference - functions for learning from your data
+     familiar  - none of the above
      (quit by typing exit or quit)"
   [& domain]
   (help- (keyword (first domain))))

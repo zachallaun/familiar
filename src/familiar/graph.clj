@@ -20,7 +20,7 @@
             [clojure.math.combinatorics :refer :all]
             [clojure.pprint :refer [pprint]]))
 
-(defn naive-skeleton
+(defn naive-bayes
   "An annoyingly simple representation of a graph skeleton
      for an annoyingly simple machine learning model."
   [classpred featurepreds]
@@ -62,9 +62,10 @@
   (let [deps (set (mapcat (comp read-string :deps)
                           (select variable
                             (where {:name pred}))))
-        exist (map :time
-                   (select instance
-                     (where {:variable_id (get-field :id variable pred)})))]
+        exist (cons "a"
+                (map :time
+                  (select instance
+                    (where {:variable_id (get-field :id variable pred)}))))]
     (doseq [t (apply sorted-set 
                 (map :time (select instance
                              (fields :time)
@@ -96,11 +97,11 @@
 
 (defn cond-prob-dist
   "Calculates the conditional probability distribution for variable
-     in time range [:start :end]"
-  [skeleton varname
+     in time range [:start :end] according to digraph"
+  [varname skeleton
    & {:keys [start end]
         :or {start (parse-date "2013-07-01")
-             end   @active-time}}]
+             end   (plus @active-time (days 1))}}]
   (let [trange        [start end]
         variables     (conj ((:in skeleton) varname) varname)
         present-vals  (possible-vals variables trange)
@@ -121,3 +122,26 @@
   "Calculates the prior disribution for variable in time range [:start :end]"
   [varname]
   (cond-prob-dist (digraph varname) varname))
+
+(defn maximize-
+  [varname desired-val]
+  (let [skeleton  (naive-bayes varname
+                               (disj (set (map :name (select variable)))
+                                     varname))
+        variables (:nodeset skeleton)
+        others    (disj variables varname)]
+    (sort #(> (val (first %1)) (val (first %2)))
+      (for [thing others]
+        (as-> (cond-prob-dist thing skeleton) x
+              (filter #(= desired-val ((key %) varname)) x)
+              (sort #(> (val %1) (val %2)) x)
+              (first x)
+              {(dissoc (first x) varname) (second x)})))))
+
+(defmacro maximize
+  "Builds a naive Bayesian classifier with given variable as class variable,
+     then returns a list of the values for all other variables that maximize
+     the probability of class variable taking on desired value, in order
+     of effect size."
+  [varname desired-val]
+  `(pprint (maximize- (str '~varname) (str '~desired-val))))
