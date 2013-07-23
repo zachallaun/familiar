@@ -142,7 +142,7 @@
              :unit unit
              :time-res time-res
              :fn function
-             :deps (str (vec (filter (set (map :name
+             :deps (str (set (filter (set (map :name
                                                (select variable (fields :name))))
                                      (map str (flatten (read-string function))))))}))
   (apply tag-var- predname (conj (read-string tags)
@@ -311,15 +311,18 @@
 
 (def valid-fns 
   {:variable  #{'new-var 'tag-var 'display 'new-pred}
-   :data      #{'data 'erase 'entered 'missing
-                          'defaults 'change-time}
+   :data      #{'data 'erase 'entered 'missing 'defaults 'change-time}
    :inference #{'correlations}
    :familiar  #{'open! 'doc 'pref 'prefs}
    :etc       #{'help}})
 
 (defn cl-loop [] 
   (println "\n///")
-  (let [input (read-string (str \( (read-line) \)))]
+  (let [input (read-line)
+        input (if (and (= \( (first input))
+                       (= \) (last input)))
+                (read-string input)
+                (read-string (str \( input \))))]
     (println "\\\\\\")
     (try
       (cond 
@@ -338,8 +341,9 @@
         (do (println (str "That is not allowed here. Start a Clojure REPL "
                           "if you want to think outside the box"))
             (cl-loop)))
-      (catch Exception e (println (str "That didn't work.\n" (.getMessage e)))
-                         (cl-loop)))))
+      (catch Exception e
+        (println (str "That didn't work.\n" (.getMessage e)))
+        (cl-loop)))))
 
 (defn -main
   [& args]
@@ -350,7 +354,8 @@
       (do (println args)
           (println
             (->> (map read-string args)
-                 (map eval))))
+                 (map eval)
+                 doall)))
 
       :else
       (do (println (str "\nFamiliar - Quantified Reasoning Assistant"
