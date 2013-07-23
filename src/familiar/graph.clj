@@ -46,23 +46,13 @@
 
 (defn calc-pred
   [pred t]
-  (let [[deps pred] (map #(read-string (get-field % variable pred))
-                         [:deps :fn])
-        var-values  (zipmap deps (map #(value- % t) deps))]
-    (try 
-      (eval (clojure.walk/postwalk
-              #(if ((set deps) (str %))
-                   (var-values (str %))
-                   %)
-              pred))
-      (catch Exception e nil))))
+  (let [pred (load-string (get-field :fn variable pred))]
+    (pred t)))
 
 (defn realize-pred
   [pred] ; time range
-  (let [deps (set (mapcat (comp read-string :deps)
-                          (select variable
-                            (where {:name pred}))))
-        exist (cons "a"
+  (let [deps  (read-string (get-field :deps variable pred))
+        exist (cons "aasklfjlasdjfal"
                 (map :time
                   (select instance
                     (where {:variable_id (get-field :id variable pred)}))))]
@@ -102,6 +92,7 @@
    & {:keys [start end]
         :or {start (parse-date "2013-07-01")
              end   (plus @active-time (days 1))}}]
+  (if (read-string (get-field :deps variable
   (realize-pred varname)
   (let [trange        [start end]
         variables     (conj ((:in skeleton) varname) varname)

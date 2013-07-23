@@ -130,7 +130,7 @@
   `(with-str-args new-var- ~exprs))
 
 (defn- new-pred-
-  [[predname function depend]
+  [[predname function]
    & {:keys [expt time-res unit tags]
         :or {expt active-expt
              time-res "date"
@@ -142,17 +142,19 @@
              :unit unit
              :time-res time-res
              :fn function
-             :deps depend}))
-  (apply tag-var- predname (read-string tags)))
+             :deps (str (vec (filter (set (map :name
+                                               (select variable (fields :name))))
+                                     (map str (flatten (read-string function))))))}))
+  (apply tag-var- predname (conj (read-string tags)
+                                 "predicate")))
 
 (defmacro new-pred
   "Adds predicate to experiment.
      Example:
      (new-pred accomplished 
-               (fn [t] (>= (value productivity t) 3))
-               productivity)"
-  [predname function & depend]
-    (new-pred- [(str predname) (str function) (str (vec (map str depend)))]))
+               #(>= (value productivity %) 3)"
+  [predname function]
+  (new-pred- [(str predname) (str function)]))
 
 (defn- display-
   [tags]
@@ -160,8 +162,7 @@
                (partial some (set (map str tags)))
                (constantly true))]
     (->> (select variable
-           (with tag)
-           (where {:default [not= "nil"]}))
+           (with tag))
          (map (fn [t] (update-in t [:tag]
                                  #(map :name %))))
          (filter #(tags (:tag %)))
