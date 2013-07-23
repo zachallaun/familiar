@@ -92,7 +92,10 @@ Basic usage
     {{"sleep" "8"} 0.6736}
     {{"coffee" "1"} 0.6500}
     {{"exercise" "2"} 0.5912})
-;; interpretation: not drinking coffee the day before, getting at least 7 hours of sleep the night before, and exercising every day for three days prior are the strongest predictors of feeling well-rested on any given day, out of all the variables and predicates that have been defined.
+;; interpretation: not drinking coffee the day before, getting at least 7 hours
+;; of sleep the night before, and exercising every day for three days prior are
+;; the strongest predictors of feeling well-rested on any given day, out of all
+;; the variables and predicates that have been defined.
 ```
 
 Contact
