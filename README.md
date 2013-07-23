@@ -23,13 +23,12 @@ For many imaginable uses of Familiar, improving your [mindfulness](http://en.wik
 Installation
 ------------
 Easier, more limited usage:
-* Download this repository wherever
-* Run familiar-x.x.x-SNAPSHOT-standalone.jar
+* Download and run the most recent [release](https://github.com/jferg/familiar/releases)
 
 More advanced usage:
-* Download this repository wherever
+* Download this repository wherever you like
 * Install [Leiningen](https://github.com/technomancy/leiningen)
-* `lein repl` from within the `familiar` directory
+* `lein repl` from within the `familiar-master` directory
 
 Basic usage
 -----------
@@ -65,15 +64,16 @@ Basic usage
 
 ```clojure
 (new-pred enough-sleep
-	  (fn [t] (>= (value sleep t) 7)))
+          (fn [t] (>= (value sleep t) 7)))
 
 (new-pred coffee-yesterday
-	  #(pos? (value coffee (minus % (days 1)))))
+          #(pos? (value coffee (minus % (days 1)))))
 
 (new-pred regular-exercise
           #(and (pos? (value exercise (minus % (days 1))))
                 (pos? (value exercise (minus % (days 2))))
-	        (pos? (value exercise (minus % (days 3))))))
+                (pos? (value exercise (minus % (days 3))))))
+
 ;; or more Clojurely,
 (new-pred regular-exercise
           (fn [t]
@@ -100,7 +100,7 @@ Basic usage
 
 Contact
 -------
-If you think you might have anything to contribute to Familiar, whether in the form of code, advice, bug reports, usability feedback, reading recommendations, vitriol, or crayon drawings, contact me at [my github username]uson2.718 at gmail.com, or @jsfergalicious.
+If you think you might have anything to contribute to Familiar, whether in the form of code, advice, bug reports, usability feedback, reading recommendations, vitriol, or crayon drawings, contact me at [my github username]uson2.718 at gmail.com, or [@jsfergalicious](https://twitter.com/jsfergalicious).
 
 License
 -------
