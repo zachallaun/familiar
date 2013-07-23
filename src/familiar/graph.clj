@@ -56,17 +56,20 @@
                 (map :time
                   (select instance
                     (where {:variable_id (get-field :id variable pred)}))))]
-    (doseq [t (apply sorted-set 
+    (doseq [t (apply sorted-set
                 (map :time (select instance
                              (fields :time)
                              (with variable
                                (fields :name))
                              (where {:variable.name [in deps]
                                      :time [not-in exist]}))))]
-      (insert instance
-        (values {:time t
-                 :value (str (calc-pred pred (parse-date t)))
-                 :variable_id (get-field :id variable pred)})))
+      (if-not (nil? (try
+                      (calc-pred pred (parse-date t))
+                      (catch Exception e nil)))
+        (insert instance
+          (values {:time t
+                   :value (str (calc-pred pred (parse-date t)))
+                   :variable_id (get-field :id variable pred)}))))
     (delete instance
       (where {:value ""
               :variable_id (get-field :id variable pred)}))))
@@ -92,8 +95,8 @@
    & {:keys [start end]
         :or {start (parse-date "2013-07-01")
              end   (plus @active-time (days 1))}}]
-  (if (read-string (get-field :deps variable
-  (realize-pred varname)
+  (if (read-string (get-field :deps variable varname))
+    (realize-pred varname))
   (let [trange        [start end]
         variables     (conj ((:in skeleton) varname) varname)
         present-vals  (possible-vals variables trange)
@@ -106,9 +109,11 @@
                               (map #(times-matching (assoc this-vals varname %)
                                                     trange)
                                    (first (possible-vals [varname] trange))))]
-          (hash-map this-vals
-                    (/ count-matches
-                       (double denom))))))))
+          (try
+            (hash-map this-vals
+                      (/ count-matches
+                         (double denom)))
+            (catch Exception e 0)))))))
 
 (defn prior-dist
   "Calculates the prior disribution for variable in time range [:start :end]"
@@ -126,13 +131,16 @@
                                            (conj excl varname)))
         variables (:nodeset skeleton)
         others    (disj variables varname)]
-    (sort #(> (val (first %1)) (val (first %2)))
-      (for [thing others]
-        (as-> (cond-prob-dist thing skeleton :start start :end end) x
-              (filter #(= desired-val ((key %) varname)) x)
-              (sort #(> (val %1) (val %2)) x)
-              (first x)
-              {(dissoc (first x) varname) (second x)})))))
+    (->> (for [thing others]
+           (as-> (cond-prob-dist thing skeleton :start start :end end) x
+                 (filter #(= desired-val ((key %) varname)) x)
+                 (sort #(> (val %1) (val %2)) x)
+                 (first x)
+                 (hash-map (dissoc (first x) varname)
+                           (double (with-precision 4 (/ (bigdec (second x))
+                                                        1))))))
+         (remove #(nil? (key (first %))))
+         (sort #(> (val (first %1)) (val (first %2)))))))
 
 (defmacro correlations
   "Returns a list of variables and their values most strongly correlated
