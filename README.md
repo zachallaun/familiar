@@ -8,7 +8,7 @@ Familiar will be a quantified reasoning assistant--a tool for those who want to 
 Goals
 -----
 * A convenient UI for entering data and describing possible models on that data
-* Automated predicate and network building/checking to thoroughly explore the space of possible models on your data
+* Automated predicate and network building/checking to thoroughly explore the space of possible models on your data (this is NP-complete, may take a while...)
 * Guided experimentation to more accurately determine relationships between variables of interest and filter out spurious correlations
 * Data collection from various Quantified Self apps/devices and other web services via API
 * Fun pictures of personally relevant Bayes nets for you to look at
@@ -104,4 +104,6 @@ If you think you might have anything to contribute to Familiar, whether in the f
 
 License
 -------
-This is free and unencumbered public domain software. For more information, see http://unlicense.org/ or the accompanying UNLICENSE file.
+Copyright (C) 2013 James Ferguson
+
+Distributed under the Eclipse Public License, the same as Clojure.
