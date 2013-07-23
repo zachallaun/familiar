@@ -42,21 +42,21 @@ Basic usage
 
 (new-var coffee non-negative? 1 :unit "cups")
 
-(new-var exercise #{0 1 2} 0 :unit "intensity")
+(new-var exercise boolean? false)
 ```
 
 * Collect data on those variables.
 
 ```clojure
-(data tiredness 1 sleep 7 coffee 1 exercise 2)
+(data tiredness 1 sleep 7 coffee 1 exercise true)
 ;; wait a day
-(data tiredness 2 sleep 6 coffee 0 exercise 1)
+(data tiredness 2 sleep 6 coffee 0 exercise false)
 ;; wait a day
 (data tiredness 0 sleep 8)
 (defaults coffee exercise)
 ;; if you want to enter data for a day after that day has passed,
 (change-time (days -1))
-(data tiredness 1 exercise 0 sleep 7 coffee 0)
+(data tiredness 1 exercise true sleep 7 coffee 0)
 ;; etc.
 ```
 
@@ -70,14 +70,14 @@ Basic usage
           #(pos? (value coffee (minus % (days 1)))))
 
 (new-pred regular-exercise
-          #(and (pos? (value exercise (minus % (days 1))))
-                (pos? (value exercise (minus % (days 2))))
-                (pos? (value exercise (minus % (days 3))))))
+          #(and (value exercise (minus % (days 1)))
+                (value exercise (minus % (days 2)))
+                (value exercise (minus % (days 3)))))
 
-;; or more Clojurely,
+;; or perhaps more Clojurely,
 (new-pred regular-exercise
           (fn [t]
-            (every? pos?
+            (every? true?
                     (map #(value exercise (minus t (days %)))
                          (range 1 4)))))
 ```
@@ -91,7 +91,7 @@ Basic usage
     {{"regular-exercise" "true"} 0.7128}
     {{"sleep" "8"} 0.6736}
     {{"coffee" "1"} 0.6500}
-    {{"exercise" "2"} 0.5912})
+    {{"exercise" "true"} 0.5912})
 ;; interpretation: not drinking coffee the day before, getting at least 7 hours
 ;; of sleep the night before, and exercising every day for three days prior are
 ;; the strongest predictors of feeling well-rested on any given day, out of all
@@ -104,6 +104,8 @@ If you think you might have anything to contribute to Familiar, whether in the f
 
 License
 -------
+Crafted with the loving assistance of the fine facilitators, students, and residents at [Hacker School](https://www.hackerschool.com/). If you like programming you should stop doing everything else and apply there [_right now_](https://www.hackerschool.com/apply).
+
 Copyright (C) 2013 James Ferguson
 
 Distributed under the Eclipse Public License, the same as Clojure.
