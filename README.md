@@ -34,6 +34,7 @@ More advanced usage:
 Basic usage
 -----------
 * Define variables you'd like to measure. By default, variables are defined with a time resolution of one day.
+
 ```clojure
 ;; format: new-var name domain default options
 (new-var tiredness #{0 1 2} 1 :unit "subjective rating (higher = more tired)")
@@ -46,6 +47,7 @@ Basic usage
 ```
 
 * Collect data on those variables.
+
 ```clojure
 (data tiredness 1 sleep 7 coffee 1 exercise 2)
 ;; wait a day
@@ -60,6 +62,7 @@ Basic usage
 ```
 
 * Define predicates on your variables if you think they're more likely to give you useful information than raw data. Defining one or more predicates for every non-binary-valued variable that sorts it into "over some value" and "under some value" buckets may be a good idea. Predicates are Clojure functions that expect a single argument, representing a time.
+
 ```clojure
 (new-pred enough-sleep
 	  (fn [t] (>= (value sleep t) 7)))
@@ -80,6 +83,7 @@ Basic usage
 ```
 
 * After collecting lots of data, see what correlations turn up.
+
 ```clojure
 (correlations tiredness 0)
 => ({{"coffee-yesterday" "false"} 0.8351}
