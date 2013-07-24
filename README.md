@@ -1,6 +1,9 @@
 _We sometimes underestimate the influence of little things._
 --Charles W. Chesnutt
 
+<img src="http://oi40.tinypic.com/20tqal5.jpg"
+ alt="Familiar spirit" title= "Familiar spirit" align="right" /> 
+
 Familiar
 ========
 Familiar will be a quantified reasoning assistant--a tool for those who want to improve their [inevitably imperfect thinking](http://en.wikipedia.org/wiki/List_of_cognitive_biases) regarding whatever it is they care about using [_SCIENCE_](http://en.wikipedia.org/wiki/Machine_learning).
