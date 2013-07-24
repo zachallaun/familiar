@@ -1,8 +1,8 @@
+<img src="http://oi40.tinypic.com/20tqal5.jpg"
+ alt="Familiar spirit" title= "Familiar spirit" align="middle" /> 
+
 _We sometimes underestimate the influence of little things._
 --Charles W. Chesnutt
-
-<img src="http://oi40.tinypic.com/20tqal5.jpg"
- alt="Familiar spirit" title= "Familiar spirit" align="right" /> 
 
 Familiar
 ========
