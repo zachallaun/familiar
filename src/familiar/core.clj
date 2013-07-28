@@ -100,61 +100,50 @@
   `(tag-var- ~@(map str args)))
 
 (defn- new-var-
-  [[varname validator default] & {:keys [expt time-res unit tags]
-                                    :or {expt active-expt
-                                         time-res "date"
-                                         unit ""
-                                         tags "()"}}]
+  [[varname validator default]
+   & {:keys [time-res unit tags] :or {time-res "date" unit "" tags "()"}}]
   (assert ((eval (read-string validator)) (read-string default))
           "Given default fails validator.")
   (assert (not (nil? (read-string default)))
           "nil default is reserved for predicates. Deal with it.")
   (insert variable
-    (values {:name varname
-             :default default
-             :unit unit
-             :time-res time-res
-             :fn validator
-             :deps "nil"}))
+    (values {:name varname, :default default, :unit unit,
+             :time-res time-res, :fn validator, :deps "nil"}))
   (apply tag-var- varname (read-string tags)))
 
 (defmacro new-var
   "Adds variable to experiment.
      Example: (new-var robot boolean? false)
      Optional arguments:
-     :expt - name of an experiment (defaults to loaded experiment)
      :time-res - time resolution (defaults to date, can be date-time)
      :unit - a string representing the unit of measure
      :tags - a sequence of strings with which to tag the variable"
   [& exprs]
   `(with-str-args new-var- ~exprs))
 
+(defn get-deps [predicate]
+  (set
+    (filter (set (map :name
+                      (select variable (fields :name))))
+            (map str (flatten (read-string predicate))))))
+
 (defn- new-pred-
-  [[predname function]
-   & {:keys [expt time-res unit tags]
-        :or {expt active-expt
-             time-res "date"
-             unit ""
-             tags "()"}}]
-  (insert variable
-    (values {:name predname
-             :default "nil"
-             :unit unit
-             :time-res time-res
-             :fn function
-             :deps (str (set (filter (set (map :name
-                                               (select variable (fields :name))))
-                                     (map str (flatten (read-string function))))))}))
-  (apply tag-var- predname (conj (read-string tags)
-                                 "predicate")))
+  [coll & {:keys [time-res unit tags] :or {time-res "date" unit "" tags "()"}}]
+  (let [[predname function] coll]
+    (insert variable
+      (values {:name predname, :default "nil", :unit unit, :time-res time-res,
+               :fn function, :deps (str (get-deps function))}))
+    (apply tag-var- predname (conj (read-string tags)
+                                   "predicate"))))
 
 (defmacro new-pred
   "Adds predicate to experiment.
      Example:
      (new-pred accomplished 
-               #(>= (value productivity %) 3)"
-  [predname function]
-  (new-pred- [(str predname) (str function)]))
+               #(>= (value productivity %) 3)
+     Accepts same optional arguments as new-var (:time-res, :unit, :tags)"
+  [& exprs]
+  `(with-str-args new-pred- ~exprs))
 
 (defn- display-
   [tags]
@@ -162,7 +151,8 @@
                (partial some (set (map str tags)))
                (constantly true))]
     (->> (select variable
-           (with tag))
+           (with tag)
+           (where {:default [not= "nil"]}))
          (map (fn [t] (update-in t [:tag]
                                  #(map :name %))))
          (filter #(tags (:tag %)))
@@ -187,8 +177,7 @@
 
 (defn datum
   "Adds a single instance of variable."
-  [varname value & {:keys [expt instant]
-                      :or {expt active-expt, instant @active-time}}]
+  [varname value & {:keys [instant] :or {instant @active-time}}]
   (let [timeslice (slice instant varname)]
     (assert (not (nil? (get-field :default variable varname)))
             "Cannot add data for predicates")
@@ -204,12 +193,11 @@
     (str varname ": " value)))
 
 (defn- data-
-  [coll & {:keys [expt instant]
-             :or {expt active-expt, instant @active-time}}]
+  [coll & {:keys [instant] :or {instant @active-time}}]
   (transaction
     (try (doall
       (->> (partition 2 coll)
-           (map #(concat % [:expt expt :instant instant]))
+           (map #(concat % [:instant instant]))
            (map #(apply datum %))))
       (catch Throwable e (println (.getMessage e))
                          (rollback)))))
@@ -222,20 +210,15 @@
   `(with-str-args data- ~exprs))
 
 (defn- erase-
-  [coll & {:keys [expt instant]
-             :or {expt active-expt, instant @active-time}}]
+  [coll & {:keys [instant] :or {instant @active-time}}]
   (let [slices 
-        (map (comp (partial slice instant) :name)
-             (select variable 
-               (fields :name) 
-               (where {:name [in coll]})))
+          (map (comp (partial slice instant) :name)
+               (select variable (fields :name) (where {:name [in coll]})))
         ids 
-        (map :id
-             (select variable
-               (fields :id)
-               (where {:name [in coll]})))]
+          (map :id
+               (select variable (fields :id) (where {:name [in coll]})))]
     (transaction
-      (delete instance 
+      (delete instance
         (fields :time :variable_id)
         (where {:time [in (set slices)]
                 :variable_id [in ids]})))))
@@ -245,32 +228,39 @@
   [& exprs]
   `(with-str-args erase- ~exprs))
 
+(defn missing-
+  [& {:keys [instant] :or {instant @active-time}}]
+  (->> (select variable
+         (fields :default :fn :name)
+         (where {:default [not= "nil"]}))
+       (map vals)
+       (filter #(no-concurrent-instance? (slice instant
+                                                (first %))
+                                         (first %)))))
+
 (defn missing
   "Displays all variables with no instance for the
      time pixel matching the active time/given time."
-  [& {:keys [expt instant]
-        :or {expt active-expt, instant @active-time}}]
-  (->> (map :name (select variable
-                    (fields :name)
-                    (where {:default [not= "nil"]})))
-       (filter #(no-concurrent-instance? (slice instant %) %))))
+  [& {:keys [instant] :or {instant @active-time}}]
+  (->> (missing- :instant instant)
+       (interpose "\n")
+       println))
 
 (defn entered
   "Displays values for variables with an instance within
      the time pixel matching the active time/given time."
-  [& {:keys [expt instant]
-        :or {expt active-expt, instant @active-time}}]
+  [& {:keys [instant] :or {instant @active-time}}]
   (as-> (select variable
           (fields :name)
           (where {:default [not= "nil"]})) x
         (map :name x)
-        (remove (set (missing :expt expt :instant instant)) x)
+        (remove (set (map first (missing- :instant instant))) x)
         (zipmap x (map #(value- % instant) x))))
 
 
 (defn- defaults-
-  [variables & {:keys [expt instant]
-                  :or {expt active-expt, instant @active-time}}]
+  [variables & {:keys [instant]
+                  :or {instant @active-time}}]
   (-<>> (select variable
           (fields :name :default)
           (where {:name [in variables]
@@ -278,7 +268,7 @@
           (order :name))
         (map :default)
         (interleave (sort variables))
-        (data- <> :expt expt :instant instant)))
+        (data- <> :instant instant)))
 
 (defmacro defaults
   "Allows given variables to take on their default values"
@@ -297,8 +287,7 @@
   "Generates data for every delta-t in a variable from instant 
      to (plus instant duration) according to func."
   [varname func delta-t duration 
-   & {:keys [expt instant]
-        :or {expt active-expt, instant @active-time}}]
+   & {:keys [instant] :or {instant @active-time}}]
   (let [[start end] (sort [instant (plus instant duration)])
         instants    (range-instants start end delta-t)]
     (doall
