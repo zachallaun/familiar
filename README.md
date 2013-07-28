@@ -1,5 +1,5 @@
 <img src="http://oi40.tinypic.com/20tqal5.jpg"
- alt="Familiar spirit" title= "Familiar spirit" align="middle" /> 
+ alt="Symbolism!" title= "Symbolism!" align="middle" /> 
 
 _We sometimes underestimate the influence of little things._
 --Charles W. Chesnutt
@@ -29,7 +29,7 @@ Easier, more limited usage:
 * Download and run the most recent [release](https://github.com/jferg/familiar/releases)
 
 More advanced usage:
-* Download this repository wherever you like
+* Download this repository
 * Install [Leiningen](https://github.com/technomancy/leiningen)
 * `lein repl` from within the `familiar-master` directory
 
@@ -67,22 +67,22 @@ Basic usage
 
 ```clojure
 (new-pred enough-sleep
-          (fn [t] (>= (value sleep t) 7)))
+  (fn [t] (>= (value sleep t) 7)))
 
 (new-pred coffee-yesterday
-          #(pos? (value coffee (minus % (days 1)))))
+  #(pos? (value coffee (minus % (days 1)))))
 
 (new-pred regular-exercise
-          #(and (value exercise (minus % (days 1)))
-                (value exercise (minus % (days 2)))
-                (value exercise (minus % (days 3)))))
+  #(and (value exercise (minus % (days 1)))
+        (value exercise (minus % (days 2)))
+        (value exercise (minus % (days 3)))))
 
 ;; or perhaps more Clojurely,
 (new-pred regular-exercise
-          (fn [t]
-            (every? true?
-                    (map #(value exercise (minus t (days %)))
-                         (range 1 4)))))
+  (fn [t]
+    (every? true?
+    (map #(value exercise (minus t (days %)))
+         (range 1 4)))))
 ```
 
 * After collecting lots of data, see what correlations turn up.

@@ -4,7 +4,7 @@
               [dbconfig :refer :all]
               [db :refer :all]
               [validator :refer :all]
-              [graph :refer :all]]
+              [math :refer :all]]
             [korma
               [core :refer :all]
               [db :refer :all]]
