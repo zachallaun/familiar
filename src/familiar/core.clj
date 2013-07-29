@@ -329,7 +329,8 @@
         input (if (and (= \( (first input))
                        (= \) (last input)))
                 (read-string input)
-                (read-string (str \( input \))))]
+                (read-string (str \( input \))))
+        valid-fn? (set (apply concat (vals valid-fns)))]
     (println "\\\\\\")
     (try
       (cond
@@ -340,7 +341,7 @@
         (#{'sudo} (first input))
         (pprint (eval (second input)))
 
-        ((set (apply concat (vals valid-fns))) (first input))
+        (valid-fn? (first input))
         (pprint (eval input))
 
         :else
