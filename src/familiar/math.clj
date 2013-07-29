@@ -29,17 +29,12 @@
   (digraph {classpred featurepreds}))
 
 (defn value- [varname time]
-  (-> (select instance
-        (with variable
-          (fields :name))
-          (where {:time (slice time varname)
-                  :variable.name varname}))
-      first
-      :value
-      (as-> x
-        (if x
-          (read-string x)
-          nil))))
+  (let [[{value :value}] (select instance
+                           (with variable
+                             (fields :name))
+                           (where {:time (slice time varname)
+                                   :variable.name varname}))]
+    (and x (read-string x))))
 
 (defmacro value [varname t]
   `(value- ~(str varname) ~t))
