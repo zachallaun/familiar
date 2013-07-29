@@ -38,8 +38,7 @@
 ;; Preferences
 ;;
 
-(spit "preferences" "" :append true)
-(if (= "" (slurp "preferences"))
+(if (not (.exists (clojure.java.io/file "preferences")))
   (spit "preferences" {:default "default"}))
 
 (def preferences (atom (read-string (slurp "preferences"))))
