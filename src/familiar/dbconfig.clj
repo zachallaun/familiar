@@ -1,5 +1,5 @@
 (ns familiar.dbconfig
-  (:refer-clojure :exclude [alter drop bigint boolean 
+  (:refer-clojure :exclude [alter drop bigint boolean
                             char double float time])
   (:require [lobos
              [core :refer :all]
@@ -14,7 +14,7 @@
     (write [buf] nil)
     (close []    nil)
     (flush []    nil)))
- 
+
 (defmacro noprint
   "Evaluates the given expressions with all printing to *out* silenced."
   [& forms]

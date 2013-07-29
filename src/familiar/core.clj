@@ -12,7 +12,7 @@
               [connectivity :as lc]
               [core :as l]
               [schema :as ls]]
-            [clojure 
+            [clojure
               [walk :as walk]
               [pprint :refer [pprint]]
               [repl :refer [doc source]]]
@@ -139,7 +139,7 @@
 (defmacro new-pred
   "Adds predicate to experiment.
      Example:
-     (new-pred accomplished 
+     (new-pred accomplished
                #(>= (value productivity %) 3)
      Accepts same optional arguments as new-var (:time-res, :unit, :tags)"
   [& exprs]
@@ -211,10 +211,10 @@
 
 (defn- erase-
   [coll & {:keys [instant] :or {instant @active-time}}]
-  (let [slices 
+  (let [slices
           (map (comp (partial slice instant) :name)
                (select variable (fields :name) (where {:name [in coll]})))
-        ids 
+        ids
           (map :id
                (select variable (fields :id) (where {:name [in coll]})))]
     (transaction
@@ -283,10 +283,10 @@
          #(apply plus % interval))
   (readable-time @active-time))
 
-(defn datagen 
-  "Generates data for every delta-t in a variable from instant 
+(defn datagen
+  "Generates data for every delta-t in a variable from instant
      to (plus instant duration) according to func."
-  [varname func delta-t duration 
+  [varname func delta-t duration
    & {:keys [instant] :or {instant @active-time}}]
   (let [[start end] (sort [instant (plus instant duration)])
         instants    (range-instants start end delta-t)]
@@ -294,7 +294,7 @@
       (map #(datum varname (str (func)) :instant %)
            instants))))
 
-;;;;;;;;;;;;;;; 
+;;;;;;;;;;;;;;;
 ;; Experiments
 ;;
 
@@ -317,14 +317,14 @@
 ;; Using
 ;;
 
-(def valid-fns 
+(def valid-fns
   {:variable  #{'new-var 'tag-var 'display 'new-pred}
    :data      #{'data 'erase 'entered 'missing 'defaults 'change-time}
    :inference #{'correlations}
    :familiar  #{'open! 'doc 'pref 'prefs}
    :etc       #{'help}})
 
-(defn cl-loop [] 
+(defn cl-loop []
   (println "\n///")
   (let [input (read-line)
         input (if (and (= \( (first input))
@@ -333,7 +333,7 @@
                 (read-string (str \( input \))))]
     (println "\\\\\\")
     (try
-      (cond 
+      (cond
         (#{'(quit) '(exit)} input)
         (println "Hooray! See you later.")
 
@@ -399,10 +399,10 @@
   [& domain]
   (help- (keyword (first domain))))
 
-(defn- str->key [s] 
+(defn- str->key [s]
   (->> (str s)
        (replace {\space \-})
-       (apply str) 
+       (apply str)
        .toLowerCase
        keyword))
 

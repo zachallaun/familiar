@@ -133,7 +133,7 @@
               (map :variable)
               first
               (map :name)
-              set) 
+              set)
         skeleton
           (naive-bayes varname
                        (apply disj variables
