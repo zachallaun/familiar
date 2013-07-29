@@ -334,23 +334,21 @@
     (try
       (cond
         (#{'(quit) '(exit)} input)
-        (println "Hooray! See you later.")
+        (do (println "Hooray! See you later.")
+            (System/exit 0))
 
         (#{'sudo} (first input))
-        (do (pprint (eval (second input)))
-            (cl-loop))
+        (pprint (eval (second input)))
 
         ((set (apply concat (vals valid-fns))) (first input))
-        (do (pprint (eval input))
-            (cl-loop))
+        (pprint (eval input))
 
         :else
-        (do (println (str "That is not allowed here. Start a Clojure REPL "
-                          "if you want to think outside the box"))
-            (cl-loop)))
+        (println (str "That is not allowed here. Start a Clojure REPL "
+                      "if you want to think outside the box")))
       (catch Exception e
-        (println (str "That didn't work.\n" (.getMessage e)))
-        (cl-loop)))))
+        (println (str "That didn't work.\n" (.getMessage e)))))
+    (recur)))
 
 (defn -main
   [& args]
