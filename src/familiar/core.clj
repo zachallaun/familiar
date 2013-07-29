@@ -321,7 +321,7 @@
    :data      #{'data 'erase 'entered 'missing 'defaults 'change-time}
    :inference #{'correlations}
    :familiar  #{'open! 'doc 'pref 'prefs}
-   :etc       #{'help}})
+   :etc       #{'help 'sudo 'quit 'exit}})
 
 (defn cl-loop []
   (println "\n///")
@@ -333,18 +333,8 @@
         valid-fn? (set (apply concat (vals valid-fns)))]
     (println "\\\\\\")
     (try
-      (cond
-        (#{'(quit) '(exit)} input)
-        (do (println "Hooray! See you later.")
-            (System/exit 0))
-
-        (#{'sudo} (first input))
-        (pprint (eval (second input)))
-
-        (valid-fn? (first input))
+      (if (valid-fn? (first input))
         (pprint (eval input))
-
-        :else
         (println (str "That is not allowed here. Start a Clojure REPL "
                       "if you want to think outside the box")))
       (catch Exception e
@@ -396,6 +386,13 @@
      (quit by typing exit or quit)"
   [& domain]
   (help- (keyword (first domain))))
+
+(def sudo identity)
+
+(defn exit []
+  (do (println "Hooray! See you later.")
+      (System/exit 0)))
+(def quit exit)
 
 (defn- str->key [s]
   (->> (str s)
