@@ -7,7 +7,7 @@
              [schema :refer :all]]
             [korma.core :refer [defentity entity-fields
                                 has-one has-many many-to-many
-                                belongs-to select]]))
+                                belongs-to select limit]]))
 
 (def bit-bucket-writer
   (proxy [java.io.Writer] []
@@ -21,7 +21,7 @@
     `(binding [*out* bit-bucket-writer]
        ~@forms))
 
-(declare variable tag instance variable_tag)
+(declare variable instance tag experiment variable_tag variable_experiment)
 
 (defentity variable
   (entity-fields :name :default :unit :time-res
@@ -37,8 +37,15 @@
   (entity-fields :name :variable_tag_id)
   (many-to-many variable :variable_tag))
 
+(defentity experiment
+  (entity-fields :name :variable_experiment_id)
+  (many-to-many variable :variable_experiment))
+
 (defentity variable_tag
   (entity-fields :variable_id :tag_id))
+
+(defentity variable_experiment
+  (entity-fields :variable_id :experiment_id))
 
 (defn surrogate-key [table]
   (integer table :id :auto-inc :primary-key))
@@ -60,31 +67,45 @@
        ~@(reverse elements)
        (surrogate-key)))
 
+(defmacro create-if-missing [tablename & tabledef]
+  `(try
+     (noprint (select ~tablename (limit 1)))
+     (catch Exception e#
+       (create (tbl ~(keyword tablename) ~@tabledef))
+       (println (str "Creating table " '~tablename)))))
+
 (defn create-tables [db]
   (try
     (close-global)
     (println "Closed open experiment")
     (catch Exception e))
   (open-global db)
-  (if (noprint (try (select variable) (catch Exception e nil)))
-    (println "Database found.")
-    (try 
-      (let [len 100, llen 1000]
-        (create (tbl :variable
-                     (varchar :time-res len)
-                     (varchar :fn llen)
-                     (varchar :default len)
-                     (varchar :unit len)
-                     (varchar :deps llen)
-                     (varchar :name len :unique)))
-        (create (tbl :instance
-                     (varchar :time len)
-                     (index :time_unique [:time :variable_id] :unique)
-                     (varchar :value len)
-                     (refer-to :variable)))
-        (create (tbl :tag
-                     (varchar :name len :unique)))
-        (create (tbl :variable_tag
-                     (refer-cascade :variable)
-                     (refer-cascade :tag))))
-      (catch Exception e (println (.getMessage e))))))
+  (let [len 100, llen 1000]
+    (create-if-missing
+      variable
+      (varchar :time-res len)
+      (varchar :fn llen)
+      (varchar :default len)
+      (varchar :unit len)
+      (varchar :deps llen)
+      (varchar :name len :unique))
+    (create-if-missing
+      instance
+      (varchar :time len)
+      (index :time_unique [:time :variable_id] :unique)
+      (varchar :value len)
+      (refer-to :variable))
+    (create-if-missing
+      tag
+      (varchar :name len :unique))
+    (create-if-missing
+      variable_tag
+      (refer-cascade :variable)
+      (refer-cascade :tag))
+    (create-if-missing
+      experiment
+      (varchar :name len :unique))
+    (create-if-missing
+      variable_experiment
+      (refer-cascade :variable)
+      (refer-cascade :experiment))))

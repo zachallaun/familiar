@@ -120,17 +120,26 @@
   [varname]
   (cond-prob-dist (digraph varname) varname))
 
-(defn correlations-
-  [varname desired-val
+(defn MLE-
+  [expt varname desired-val
    & {:keys [excl start end]
         :or {excl  []
              start (parse-date "2013-07-01")
              end   (plus @active-time (days 1))}}]
-  (let [skeleton  (naive-bayes varname
-                               (apply disj (set (map :name (select variable)))
-                                           (conj excl varname)))
-        variables (:nodeset skeleton)
-        others    (disj variables varname)]
+  (let [variables
+         (->> (select experiment
+                (with variable (fields :name))
+                (where {:name expt}))
+              (map :variable)
+              first
+              (map :name)
+              set) 
+        skeleton
+          (naive-bayes varname
+                       (apply disj variables
+                                   (conj excl varname)))
+        others
+          (disj variables varname)]
     (->> (for [thing others]
            (as-> (cond-prob-dist thing skeleton :start start :end end) x
                  (filter #(= desired-val ((key %) varname)) x)
@@ -142,15 +151,16 @@
          (remove #(nil? (key (first %))))
          (sort #(> (val (first %1)) (val (first %2)))))))
 
-(defmacro correlations
+(defmacro MLE
   "Returns a list of variables and their values most strongly correlated
      with the given variable taking on the given value."
-  [varname desired-val
+  [expt varname desired-val
    & {:keys [excl start end]
         :or {excl  []
              start '(parse-date "2013-07-01")
              end   '(plus @active-time (days 1))}}]
-  `(pprint (correlations- (str '~varname)
-                          (str '~desired-val)
-                          :excl '~(vec (map str excl))
-                          :start ~start :end ~end)))
+  `(pprint (MLE- (str '~expt)
+                 (str '~varname)
+                 (str '~desired-val)
+                 :excl '~(vec (map str excl))
+                 :start ~start :end ~end)))

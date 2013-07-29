@@ -60,7 +60,7 @@
   (pprint @preferences))
 
 ;;;;;;;;;;;;;;;
-;; Experiments
+;; Databases
 ;;
 
 (def db (atom (h2 {:db "data/default/default.db"})))
@@ -86,7 +86,7 @@
   [varname & tags]
   (assert (seq (get-field :name variable varname))
           (str "No variable by the name " varname "."))
-  (apply create-if-missing tag tags)
+  (apply insert-if-missing tag tags)
   (for [item tags]
     (insert variable_tag
       (values {:tag_id      (get-field :id tag item)
@@ -281,7 +281,7 @@
   [& interval]
   (swap! active-time
          #(apply plus % interval))
-  (readable-present))
+  (readable-time @active-time))
 
 (defn datagen 
   "Generates data for every delta-t in a variable from instant 
@@ -293,6 +293,25 @@
     (doall
       (map #(datum varname (str (func)) :instant %)
            instants))))
+
+;;;;;;;;;;;;;;; 
+;; Experiments
+;;
+
+(defn new-expt-
+  [title variables]
+  (insert experiment
+    (values {:name title}))
+  (let [expt-id (get-field :id experiment title)]
+    (for [thing variables]
+      (insert variable_experiment
+        (values {:variable_id (get-field :id variable thing)
+                 :experiment_id expt-id})))))
+
+(defmacro new-expt
+  "Defines an experiment on a set of variables/predicates."
+  [title & variables]
+  `(new-expt- (str '~title) (map str '~variables)))
 
 ;;;;;;;;;
 ;; Using
@@ -348,7 +367,7 @@
 
       :else
       (do (println (str "\nFamiliar - Quantified Reasoning Assistant"
-                        "\nThe active time is " (readable-present)
+                        "\nThe active time is " (readable-time @active-time)
                         "\nFor help type \"help\""))
           (cl-loop)))))
 

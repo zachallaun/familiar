@@ -21,8 +21,8 @@
 (defn present []
   (unparse-time (local-now)))
 (def active-time (atom (local-now)))
-(defn readable-present []
-  (unparse (formatters :rfc822) @active-time))
+(defn readable-time [dt]
+  (unparse (formatters :rfc822) dt))
 
 (def precision-table
   {:date (days 1)})
@@ -38,17 +38,17 @@
   (let [time-res (keyword (get-field :time-res variable varname))]
     (unparse (formatters time-res) instant)))
 
-
 (defn range-instants [start end delta-t]
   (take-while (partial within? start end)
               (iterate #(plus % delta-t)
                        start)))
 
 (defn range-values [varname [start end]]
-  (let [time-res (keyword (get-field :time-res variable varname))
+  (let [time-res
+          (keyword (get-field :time-res variable varname))
         times
-        (->> (range-instants start end (precision-table time-res))
-             (map (partial unparse (formatters time-res))))]
+          (->> (range-instants start end (precision-table time-res))
+               (map (partial unparse (formatters time-res))))]
     (select instance
       (fields :time :value)
       (where {:variable_id (get-field :id variable varname)
@@ -60,7 +60,7 @@
              #(range-values % trange))
        variables))
 
-(defn create-if-missing [this & names]
+(defn insert-if-missing [this & names]
  (doall
    (for [item (remove (set (map :name
                                 (select this
